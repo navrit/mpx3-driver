@@ -29,6 +29,14 @@ int main() {
 
   bool finished = false;
   int ret = 1;
+  int received_size = 0;
+  uint64_t *pixel_packet, pixel_word;
+  uint64_t type;
+  int sizeofuint64_t = sizeof(uint64_t);
+
+  int tmp = 0;
+
+  uint64_t pSOR = 0, pEOR = 0, pSOF = 0, pEOF = 0, pMID = 0, iEOF = 0, def = 0, bram = 0;
 
   time_point begin = steady_clock::now();
   printDebuggingOutput(packets, packets_per_frame, number_of_chips, calculateNumberOfFrames(packets, number_of_chips, packets_per_frame), begin);
@@ -44,11 +52,70 @@ int main() {
           /* This consists of 12 (packets_per_frame) packets (MTU = 9000 bytes).
              First 11 are 9000 bytes, the last one is 7560 bytes.
              Assuming no packet loss, extra fragmentation or MTU changing size*/
-          recv(fds[i].fd, inputQueues[i], max_packet_size, 0);
+          received_size = recv(fds[i].fd, inputQueues[i], max_packet_size, 0);
+
+          //! This shouldn't happen but Henk has this check in his code
+          //! Maybe it's a good idea to keep it
+          if (received_size <= 0) break;
 
           /* Count the number of packets received.
              Could calculate lost packets like Henk does, is this necessary? */
           ++packets;
+
+          pixel_packet = (uint64_t *) inputQueues[i];
+          for( int i = 0; i < received_size/sizeofuint64_t; ++i, ++pixel_packet) {
+              // Reverse the byte order
+              char *bytes = (char *) &pixel_word;
+              char *p     = (char *) pixel_packet;
+              for( int i=0; i < 8; ++i ) {
+                  bytes[i] = p[7-i];
+              }
+              *pixel_packet = pixel_word;
+
+              type = (*pixel_packet) & PKT_TYPE_MASK;
+
+              switch (type) {
+              case INFO_HEADER_SOF:
+                  continue;
+              case INFO_HEADER_MID:
+                  continue;
+              case INFO_HEADER_EOF:
+                  ++iEOF;
+                  break;
+              case BRAM_SPECIAL_PKT:
+                  /* The number of Bram packets (0x2000000000000000) is
+                     always the same as pixel MID.
+                    They must be related somehow... */
+                  // DEV_DATA_COMPRESSED?
+                  ++bram;
+                  break;
+              case PIXEL_DATA_SOR:
+                  ++pSOR;
+                  break;
+              case PIXEL_DATA_EOR:
+                  ++pEOR;
+                  break;
+              case PIXEL_DATA_SOF:
+                  ++pSOF;
+                  break;
+              case PIXEL_DATA_EOF:
+                  ++pEOF;
+                  break;
+              case PIXEL_DATA_MID:
+                  ++pMID;
+                  break;
+              default:
+                  // Some kind of fucking rubbish??
+                  // Henk doesn't bother explaining what this is
+                  // Maybe it's data, who knows
+                  if (type != 0) {
+                      std::cout << tmp << ": " << type << "\n";
+                      ++tmp;
+                  }
+                  ++def;
+                  break;
+              }
+          }
         }
       }
 
@@ -57,6 +124,8 @@ int main() {
       if (frames == nr_of_triggers) {
         printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
         printEndOfRunInformation(frames, packets, begin, nr_of_triggers, trig_length_us, trig_deadtime_us);
+        printf("\nDefault\t\tiEOF\t\tpMID\tBram\tpSOR\tpEOR\tpSOF\tpEOF\n");
+        printf("%-10lu\t%-10lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\n\n", def/4, iEOF/4, pMID/4, bram/4, pSOR/4, pEOR/4, pSOF/4, pEOF/4);
         finished = true;
       } else {
         printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
@@ -160,9 +229,8 @@ int set_cpu_affinity()
 
   CPU_ZERO(&set);                                      /* Clears set, so that it
                                                           contains no CPUs */
-  CPU_SET(3, &set);                                    /* Add CPU cpu to set */
-  CPU_CLR(1, &set);                                    /* Remove CPU cpu from
-                                                          set */
+  CPU_SET(4, &set);                                    /* Add CPU cpu to set */
+  //CPU_CLR(1, &set);                               /* Remove CPU cpu from set */
   ret = sched_setaffinity(0, sizeof(cpu_set_t), &set); /* Set affinity of this
                                                           process to the defined
                                                           mask, i.e. only N */
