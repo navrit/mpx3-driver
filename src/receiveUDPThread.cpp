@@ -1,25 +1,3 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <iostream>
-#include <sched.h>
-
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <wait.h>
-#include <signal.h>
-#include <errno.h>
-#include <sys/time.h>
-#include <cstring>
-#include <netdb.h>
-
-#include "SpidrDaq.h"
-#include "mpx3defs.h"
-#include "spidrdata.h"
-
-#include "colors.h"
-
 #include "receiveUDPThread.h"
 
 using time_point = std::chrono::steady_clock::time_point;

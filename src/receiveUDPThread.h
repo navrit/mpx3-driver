@@ -6,6 +6,12 @@
 #include <math.h> /* ceil */
 #include <netinet/in.h>
 #include <sys/poll.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <iostream>
+#include <cstring>
+
+#include "colors.h" // Just for pretty terminal colour printing
 
 #include "SpidrController.h"
 
