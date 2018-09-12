@@ -84,8 +84,12 @@ int main() {
                   break;
               case BRAM_SPECIAL_PKT:
                   /* The number of Bram packets (0x2000000000000000) is
-                     always the same as pixel MID.
-                    They must be related somehow... */
+                   *  always the same as pixel MID.
+                   * They must be related somehow... */
+
+                  /* Either Bram made a mistake in his emulator
+                   * or the SPIDR Register Map is out of date */
+
                   // DEV_DATA_COMPRESSED?
                   ++bram;
                   break;
@@ -105,9 +109,9 @@ int main() {
                   ++pMID;
                   break;
               default:
-                  // Some kind of fucking rubbish??
-                  // Henk doesn't bother explaining what this is
-                  // Maybe it's data, who knows
+                  /* Some kind of fucking rubbish??
+                   * Henk doesn't bother explaining what this is
+                   * Maybe it's data, who knows */
                   if (type != 0) {
                       std::cout << tmp << ": " << type << "\n";
                       ++tmp;
@@ -122,6 +126,9 @@ int main() {
       frames = calculateNumberOfFrames(packets, number_of_chips, packets_per_frame);
 
       if (frames == nr_of_triggers) {
+        //! This can never be triggered when it should if the emulator is running and not pinned to
+        //! a different physical CPU core that this process.
+
         printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
         printEndOfRunInformation(frames, packets, begin, nr_of_triggers, trig_length_us, trig_deadtime_us);
         printf("\nDefault\t\tiEOF\t\tpMID\tBram\tpSOR\tpEOR\tpSOF\tpEOF\n");
@@ -131,7 +138,7 @@ int main() {
         printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
       }
     } else if (ret == -1) {
-      // An error occurred, never actually seen this triggered
+      //! An error occurred, never actually seen this triggered
       return false;
     }
   } while (!finished);
