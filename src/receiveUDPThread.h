@@ -37,12 +37,9 @@ const uint64_t PIXEL_DATA_EOR    = 0xE000000000000000;
 const int number_of_chips = 4;
 const int TCPPort = 50000;
 
-//#pragma GCC diagnostic push
-//#pragma GCC diagnostic ignored "-Wmissing-variable-declarations"
 SpidrController *spidrcontrol = nullptr;
 struct sockaddr_in listen_address; // My address
 struct pollfd fds[number_of_chips];
-//#pragma GCC diagnostic pop
 
 const std::string socketIPAddr = "127.0.0.1";
 const int max_packet_size = 9000;
