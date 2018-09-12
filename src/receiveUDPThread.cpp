@@ -31,6 +31,7 @@ int main() {
   int ret = 1;
 
   time_point begin = steady_clock::now();
+  printDebuggingOutput(packets, packets_per_frame, number_of_chips, calculateNumberOfFrames(packets, number_of_chips, packets_per_frame), begin);
 
   do {
     ret = poll(fds, number_of_chips, timeout);
@@ -53,11 +54,12 @@ int main() {
 
       frames = calculateNumberOfFrames(packets, number_of_chips, packets_per_frame);
 
-      printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
-
       if (frames == nr_of_triggers) {
+        printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
         printEndOfRunInformation(frames, packets, begin, nr_of_triggers, trig_length_us, trig_deadtime_us);
         finished = true;
+      } else {
+        printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
       }
     } else if (ret == -1) {
       // An error occurred, never actually seen this triggered
@@ -344,7 +346,7 @@ void printDebuggingOutput(uint64_t packets, int packets_per_frame, int number_of
         (frames % (nr_of_triggers / 50) == 0)) {
       time_point end = steady_clock::now();
       auto t = std::chrono::duration_cast<us>(end - begin).count();
-      printf("%9lu/%-9d\t%-.0f%%\t%lu s\t%lu packets\n", frames, nr_of_triggers,
+      printf("%9lu/%-9d\t%-.0f%%\t%lus\t%lu packets\n", frames, nr_of_triggers,
              float(frames * 100. / nr_of_triggers), t / 1000000, packets);
     }
 }
