@@ -1,0 +1,5 @@
+build-receiveUDPThread-*/
+*.stash
+*.o
+
+*.user
