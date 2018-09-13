@@ -22,28 +22,26 @@ typedef std::chrono::nanoseconds ns;
 
 //! See Table 54 (MPX3 Packet Format) - SPIDR Register Map
 //! 64 bit masks because of the uint64_t data type
-//! - This could be done in 32 bit uint_32t?
 //! Same order as switch, case statement
 const uint64_t PKT_TYPE_MASK     = 0xF000000000000000;
 
-const uint64_t PIXEL_DATA_SOR    = 0xA000000000000000;
-const uint64_t PIXEL_DATA_EOR    = 0xE000000000000000;
-const uint64_t PIXEL_DATA_SOF    = 0xB000000000000000;
-const uint64_t PIXEL_DATA_EOF    = 0x7000000000000000;
-const uint64_t PIXEL_DATA_MID    = 0x3000000000000000;
-const uint64_t INFO_HEADER_SOF   = 0x9000000000000000;
-const uint64_t INFO_HEADER_MID   = 0x1000000000000000;
-const uint64_t INFO_HEADER_EOF   = 0xD000000000000000;
-//! End of Table 54
+const uint64_t MY_PKT_TYPE_MASK  = 0x00000000000000F0;
 
-const uint64_t BRAM_SPECIAL_PKT  = 0x2000000000000000;
-const uint64_t WTF_SPECIAL_PKT   = 0x4000000000000000;
+const uint64_t PIXEL_DATA_SOR    = 0xA0; //! #2
+const uint64_t PIXEL_DATA_EOR    = 0xE0; //! #3
+const uint64_t PIXEL_DATA_SOF    = 0xB0; //! #7
+const uint64_t PIXEL_DATA_EOF    = 0x70; //! #5
+const uint64_t PIXEL_DATA_MID    = 0x30; //! #1 Most frequent
+const uint64_t INFO_HEADER_SOF   = 0x90; //! #6
+const uint64_t INFO_HEADER_MID   = 0x10; //! #4
+const uint64_t INFO_HEADER_EOF   = 0xD0; //! #8
+//! End of Table 54
 
 const int MPX_PIXEL_COLUMNS      = 256;
 
 const int number_of_chips = 4;
 const int TCPPort = 50000;
-const std::string socketIPAddr = "192.168.100.10";
+const std::string socketIPAddr = "127.0.0.1";
 
 SpidrController *spidrcontrol = nullptr;
 struct sockaddr_in listen_address; // My address
@@ -63,7 +61,7 @@ const int trig_freq_mhz =
 //! Same calculation as Dexter
 //! Should be 2e6 for 2000 Hz?
 
-const int nr_of_triggers = 100;
+const int nr_of_triggers = 10000;
 const int continuousRW_frequency = 2000;                        // Hz?
 const int timeout = (trig_length_us + trig_deadtime_us) / 1000; // ms?
 const bool readoutMode_sequential = true;

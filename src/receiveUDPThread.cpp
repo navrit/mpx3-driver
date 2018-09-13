@@ -46,7 +46,7 @@ int main() {
 
   int tmp = 0;
 
-  uint64_t pSOR = 0, pEOR = 0, pSOF = 0, pEOF = 0, pMID = 0, iEOF = 0, def = 0, bram = 0, wtf = 0;
+  uint64_t pSOR = 0, pEOR = 0, pSOF = 0, pEOF = 0, pMID = 0, iSOF = 0, iMID = 0, iEOF = 0, def = 0;
 
   time_point begin = steady_clock::now();
   printDebuggingOutput(packets, packets_per_frame, number_of_chips, calculateNumberOfFrames(packets, number_of_chips, packets_per_frame), begin);
@@ -75,11 +75,13 @@ int main() {
              Could calculate lost packets like Henk does, is this necessary? */
           ++packets;
 
+          //! Start processing the pixel packet
           pixel_packet = (uint64_t *) inputQueues[i];
 
           for( int j = 0; j < received_size/sizeofuint64_t; ++j, ++pixel_packet) {
               //! Is it necessary to reverse the byte order and then do the & PKT_TYPE_MASK?
               //! Couldn't you just flip the MASK and get the same results?
+
               // Reverse the byte order
               char *bytes = (char *) &pixel_word;
               char *p     = (char *) pixel_packet;
@@ -87,7 +89,7 @@ int main() {
                   bytes[i] = p[7-i];
               }
               *pixel_packet = pixel_word;
-              type = (*pixel_packet) & PKT_TYPE_MASK;
+              type = (*pixel_packet) & MY_PKT_TYPE_MASK;
 
               switch (type) {
               case PIXEL_DATA_SOR:
@@ -116,7 +118,8 @@ int main() {
                   ++pEOF;
 
                   rowPixels += pixels_per_word;
-                  // Henk extracts the FLAGS word here
+                  //! Henk extracts the FLAGS word here.
+                  //! Dexter doesn't use this yet, maybe revisit later
 
                   break;
               case PIXEL_DATA_MID:
@@ -125,33 +128,18 @@ int main() {
                   rowPixels += pixels_per_word;
                   break;
               case INFO_HEADER_SOF:
-                  continue;
+                  ++iSOF;
+                  break; //! TODO Change this back to continue
               case INFO_HEADER_MID:
-                  continue;
+                  ++iMID;
+                  break; //! TODO Change this back to continue
               case INFO_HEADER_EOF:
                   ++iEOF;
                   break;
-              case BRAM_SPECIAL_PKT:
-                  /* The number of Bram packets (0x2000000000000000) is
-                   *  always the same as pixel MID.
-                   * They must be related somehow... */
-
-                  /* Either Bram made a mistake in his emulator
-                   * or the SPIDR Register Map is out of date */
-
-                  // DEV_DATA_COMPRESSED?
-                  std::cout << std::hex << "ChipID: " << i << " WordPosition: " << j << " " << " PixelWord: " << pixel_word << "\n";
-
-                  ++bram;
-                  break;
-	      case WTF_SPECIAL_PKT:
-	          ++wtf;
-                  //std::cout << std::dec << "WTF packet count:" << wtf << "\n";
-	          break;
               default:
-                  /* Some kind of fucking rubbish??
-                   * Henk doesn't bother explaining what this is
-                   * Maybe it's data, who knows */
+                  // Some kind of fucking rubbish??
+                   // Henk doesn't bother explaining what this is
+                   // Maybe it's data, who knows
                   if (type != 0) {
                       std::cout << "Rubbish packet count: " << rubbish_counter << ": " << type << "\n";
                       ++rubbish_counter;
@@ -171,8 +159,8 @@ int main() {
 
         printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
         printEndOfRunInformation(frames, packets, begin, nr_of_triggers, trig_length_us, trig_deadtime_us);
-        printf("\nDefault\t\tiEOF\t\tpMID\tBram\tpSOR\tpEOR\tpSOF\tpEOF\tWTF\n");
-        printf("%-10lu\t%-10lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\n\n", def/4, iEOF/4, pMID/4, bram/4, pSOR/4, pEOR/4, pSOF/4, pEOF/4, wtf/4);
+        printf("\npMID\t\tpSOR\tpEOR\tpSOF\tpEOF\tiSOF\tiMID\tiEOF\tDef.\n");
+        printf("%-6lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\n", pMID/4, pSOR/4, pEOR/4, pSOF/4, pEOF/4, iSOF/4, iMID/4, iEOF/4, def/4);
         finished = true;
       } else {
         printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
@@ -462,7 +450,7 @@ void printDebuggingOutput(uint64_t packets, int packets_per_frame, int number_of
         (frames % (nr_of_triggers / 50) == 0)) {
       time_point end = steady_clock::now();
       auto t = std::chrono::duration_cast<us>(end - begin).count();
-      printf("%9lu/%-9d\t%-.0f%%\t%lus\t%lu packets\n\n", frames, nr_of_triggers,
+      printf("%9lu/%-9d\t%-.0f%%\t%lus\t%lu packets\n", frames, nr_of_triggers,
              float(frames * 100. / nr_of_triggers), t / 1000000, packets);
     }
 }
