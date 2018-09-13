@@ -21,18 +21,24 @@ typedef std::chrono::microseconds us;
 typedef std::chrono::nanoseconds ns;
 
 //! See Table 54 (MPX3 Packet Format) - SPIDR Register Map
+//! 64 bit masks because of the uint64_t data type
+//! - This could be done in 32 bit uint_32t?
+//! Same order as switch, case statement
 const uint64_t PKT_TYPE_MASK     = 0xF000000000000000;
 
-const uint64_t INFO_HEADER_MID   = 0x1000000000000000;
-const uint64_t BRAM_SPECIAL_PKT  = 0x2000000000000000;
-const uint64_t PIXEL_DATA_MID    = 0x3000000000000000;
-const uint64_t PIXEL_DATA_EOF    = 0x7000000000000000;
-const uint64_t INFO_HEADER_SOF   = 0x9000000000000000;
 const uint64_t PIXEL_DATA_SOR    = 0xA000000000000000;
-const uint64_t PIXEL_DATA_SOF    = 0xB000000000000000;
-const uint64_t INFO_HEADER_EOF   = 0xD000000000000000;
 const uint64_t PIXEL_DATA_EOR    = 0xE000000000000000;
+const uint64_t PIXEL_DATA_SOF    = 0xB000000000000000;
+const uint64_t PIXEL_DATA_EOF    = 0x7000000000000000;
+const uint64_t PIXEL_DATA_MID    = 0x3000000000000000;
+const uint64_t INFO_HEADER_SOF   = 0x9000000000000000;
+const uint64_t INFO_HEADER_MID   = 0x1000000000000000;
+const uint64_t INFO_HEADER_EOF   = 0xD000000000000000;
+
+const uint64_t BRAM_SPECIAL_PKT  = 0x2000000000000000;
 //! End of Table 54
+
+const int MPX_PIXEL_COLUMNS      = 256;
 
 const int number_of_chips = 4;
 const int TCPPort = 50000;
