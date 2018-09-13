@@ -34,7 +34,12 @@ int main() {
   uint64_t type;
   int sizeofuint64_t = sizeof(uint64_t);
 
-  int tmp = 0;
+  int rubbish_counter = 0;
+  int pixel_depth = 12;
+  int pixels_per_word = 60/pixel_depth; //! TODO get or calculate pixel_depth
+
+  int rowPixels = 0;
+  uint64_t row_counter = 0;
 
   uint64_t pSOR = 0, pEOR = 0, pSOF = 0, pEOF = 0, pMID = 0, iEOF = 0, def = 0, bram = 0;
 
@@ -75,6 +80,40 @@ int main() {
               type = (*pixel_packet) & PKT_TYPE_MASK;
 
               switch (type) {
+              case PIXEL_DATA_SOR:
+                  ++pSOR;
+
+                  // Henk checks for lost packets here
+                  ++row_counter;
+                  // Henk checks for row counter > 256, when would this ever happen?
+                  rowPixels = 0;
+                  rowPixels += pixels_per_word;
+                  break;
+              case PIXEL_DATA_EOR:
+                  ++pEOR;
+
+                  rowPixels += MPX_PIXEL_COLUMNS - (MPX_PIXEL_COLUMNS/pixels_per_word)*pixels_per_word;
+
+                  break;
+              case PIXEL_DATA_SOF:
+                  ++pSOF;
+                  rowPixels = 0;
+                  rowPixels += pixels_per_word;
+
+                  ++row_counter;
+                  break;
+              case PIXEL_DATA_EOF:
+                  ++pEOF;
+
+                  rowPixels += pixels_per_word;
+                  // Henk extracts the FLAGS word here
+
+                  break;
+              case PIXEL_DATA_MID:
+                  ++pMID;
+
+                  rowPixels += pixels_per_word;
+                  break;
               case INFO_HEADER_SOF:
                   continue;
               case INFO_HEADER_MID:
@@ -93,28 +132,13 @@ int main() {
                   // DEV_DATA_COMPRESSED?
                   ++bram;
                   break;
-              case PIXEL_DATA_SOR:
-                  ++pSOR;
-                  break;
-              case PIXEL_DATA_EOR:
-                  ++pEOR;
-                  break;
-              case PIXEL_DATA_SOF:
-                  ++pSOF;
-                  break;
-              case PIXEL_DATA_EOF:
-                  ++pEOF;
-                  break;
-              case PIXEL_DATA_MID:
-                  ++pMID;
-                  break;
               default:
                   /* Some kind of fucking rubbish??
                    * Henk doesn't bother explaining what this is
                    * Maybe it's data, who knows */
                   if (type != 0) {
-                      std::cout << tmp << ": " << type << "\n";
-                      ++tmp;
+                      std::cout << rubbish_counter << ": " << type << "\n";
+                      ++rubbish_counter;
                   }
                   ++def;
                   break;
