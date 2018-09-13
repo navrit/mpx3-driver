@@ -1,5 +1,6 @@
 build-receiveUDPThread-*/
 *.stash
 *.o
-
 *.user
+Makefile
+receiveUDPThread
