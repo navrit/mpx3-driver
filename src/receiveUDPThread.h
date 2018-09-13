@@ -34,20 +34,21 @@ const uint64_t PIXEL_DATA_MID    = 0x3000000000000000;
 const uint64_t INFO_HEADER_SOF   = 0x9000000000000000;
 const uint64_t INFO_HEADER_MID   = 0x1000000000000000;
 const uint64_t INFO_HEADER_EOF   = 0xD000000000000000;
+//! End of Table 54
 
 const uint64_t BRAM_SPECIAL_PKT  = 0x2000000000000000;
-//! End of Table 54
+const uint64_t WTF_SPECIAL_PKT   = 0x4000000000000000;
 
 const int MPX_PIXEL_COLUMNS      = 256;
 
 const int number_of_chips = 4;
 const int TCPPort = 50000;
+const std::string socketIPAddr = "192.168.100.10";
 
 SpidrController *spidrcontrol = nullptr;
 struct sockaddr_in listen_address; // My address
 struct pollfd fds[number_of_chips];
 
-const std::string socketIPAddr = "127.0.0.1";
 const int max_packet_size = 9000;
 const int max_buffer_size =
     (11 * max_packet_size) + 7560; //! [bytes] You can check this on Wireshark,
@@ -62,7 +63,7 @@ const int trig_freq_mhz =
 //! Same calculation as Dexter
 //! Should be 2e6 for 2000 Hz?
 
-const int nr_of_triggers = 10000;
+const int nr_of_triggers = 100;
 const int continuousRW_frequency = 2000;                        // Hz?
 const int timeout = (trig_length_us + trig_deadtime_us) / 1000; // ms?
 const bool readoutMode_sequential = true;
@@ -82,7 +83,7 @@ int set_scheduler();
 int print_affinity();
 int set_cpu_affinity();
 
-bool initSpidrController(const char *IPAddr, int port);
+bool initSpidrController(std::string IPAddr, int port);
 bool connectToDetector();
 unsigned int inet_addr(char *str);
 bool initSocket(const char *inetIPAddr = "");

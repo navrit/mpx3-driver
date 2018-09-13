@@ -13,7 +13,7 @@ int main() {
   if (set_scheduler() != 0) {
       return false;
   }
-  if (!initSpidrController("127.0.0.1", TCPPort)) {
+  if (!initSpidrController(socketIPAddr, TCPPort)) {
       return false;
   }
   if (!connectToDetector()) {
@@ -46,7 +46,7 @@ int main() {
 
   int tmp = 0;
 
-  uint64_t pSOR = 0, pEOR = 0, pSOF = 0, pEOF = 0, pMID = 0, iEOF = 0, def = 0, bram = 0;
+  uint64_t pSOR = 0, pEOR = 0, pSOF = 0, pEOF = 0, pMID = 0, iEOF = 0, def = 0, bram = 0, wtf = 0;
 
   time_point begin = steady_clock::now();
   printDebuggingOutput(packets, packets_per_frame, number_of_chips, calculateNumberOfFrames(packets, number_of_chips, packets_per_frame), begin);
@@ -64,7 +64,7 @@ int main() {
              Assuming no packet loss, extra fragmentation or MTU changing size*/
           received_size = recv(fds[i].fd, inputQueues[i], max_packet_size, 0);
 
-          std::cout << std::dec << "Index: " << tmp << "\t Chip ID: " << i << "\n";
+          //std::cout << std::dec << "Index: " << tmp << "\t Chip ID: " << i << "\n";
           ++tmp;
 
           //! This shouldn't happen but Henk has this check in his code
@@ -140,16 +140,20 @@ int main() {
                    * or the SPIDR Register Map is out of date */
 
                   // DEV_DATA_COMPRESSED?
-                  std::cout << std::hex << "ChipID: " << i << " WordPosition: " << j << " " << " PixelWord: " << pixel_word << " PixelPacket: " << pixel_packet << "\n";
+                  std::cout << std::hex << "ChipID: " << i << " WordPosition: " << j << " " << " PixelWord: " << pixel_word << "\n";
 
                   ++bram;
                   break;
+	      case WTF_SPECIAL_PKT:
+	          ++wtf;
+                  //std::cout << std::dec << "WTF packet count:" << wtf << "\n";
+	          break;
               default:
                   /* Some kind of fucking rubbish??
                    * Henk doesn't bother explaining what this is
                    * Maybe it's data, who knows */
                   if (type != 0) {
-                      std::cout << rubbish_counter << ": " << type << "\n";
+                      std::cout << "Rubbish packet count: " << rubbish_counter << ": " << type << "\n";
                       ++rubbish_counter;
                   }
                   ++def;
@@ -161,14 +165,14 @@ int main() {
 
       frames = calculateNumberOfFrames(packets, number_of_chips, packets_per_frame);
 
-      if (frames == 1 /*nr_of_triggers*/) {
+      if (frames == nr_of_triggers) {
         //! This can never be triggered when it should if the emulator is running and not pinned to
         //! a different physical CPU core that this process.
 
         printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
         printEndOfRunInformation(frames, packets, begin, nr_of_triggers, trig_length_us, trig_deadtime_us);
-        printf("\nDefault\t\tiEOF\t\tpMID\tBram\tpSOR\tpEOR\tpSOF\tpEOF\n");
-        printf("%-10lu\t%-10lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\n\n", def/4, iEOF/4, pMID/4, bram/4, pSOR/4, pEOR/4, pSOF/4, pEOF/4);
+        printf("\nDefault\t\tiEOF\t\tpMID\tBram\tpSOR\tpEOR\tpSOF\tpEOF\tWTF\n");
+        printf("%-10lu\t%-10lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\n\n", def/4, iEOF/4, pMID/4, bram/4, pSOR/4, pEOR/4, pSOF/4, pEOF/4, wtf/4);
         finished = true;
       } else {
         printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
@@ -295,10 +299,10 @@ int set_cpu_affinity()
   return 0;
 }
 
-bool initSpidrController(const char * IPAddr, int port)
+bool initSpidrController(std::string IPAddr, int port)
 {
     int a, b, c, d;
-    sscanf(IPAddr, "%d.%d.%d.%d", &a, &b, &c, &d);
+    sscanf(IPAddr.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
     spidrcontrol = new SpidrController(a, b, c, d, port);
     if (spidrcontrol != nullptr) {
         return true;
@@ -458,7 +462,7 @@ void printDebuggingOutput(uint64_t packets, int packets_per_frame, int number_of
         (frames % (nr_of_triggers / 50) == 0)) {
       time_point end = steady_clock::now();
       auto t = std::chrono::duration_cast<us>(end - begin).count();
-      printf("%9lu/%-9d\t%-.0f%%\t%lus\t%lu packets\n", frames, nr_of_triggers,
+      printf("%9lu/%-9d\t%-.0f%%\t%lus\t%lu packets\n\n", frames, nr_of_triggers,
              float(frames * 100. / nr_of_triggers), t / 1000000, packets);
     }
 }
