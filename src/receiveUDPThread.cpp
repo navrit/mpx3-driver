@@ -14,7 +14,9 @@ int main() {
       return false;
   }
 
-  initSpidrController("127.0.0.1", TCPPort);
+  if (!initSpidrController("127.0.0.1", TCPPort)) {
+      return 1;
+  }
   connectToDetector();
   initSocket(); //! No arguments --> listens on all IP addresses
                 //! Arguments --> IP address as const char *
@@ -297,9 +299,10 @@ bool initSpidrController(const char * IPAddr, int port)
     int a, b, c, d;
     sscanf(IPAddr, "%d.%d.%d.%d", &a, &b, &c, &d);
     spidrcontrol = new SpidrController(a, b, c, d, port);
-    if (spidrcontrol != nullptr) {
+    if (spidrcontrol->isConnected()) {
         return true;
     } else {
+        std::cout << BOLD(FRED("SpidrController not connected, start the emulator or connect a SPIDR.\n"));
         return false;
     }
 }
