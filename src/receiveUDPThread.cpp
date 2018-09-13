@@ -41,6 +41,8 @@ int main() {
   int rowPixels = 0;
   uint64_t row_counter = 0;
 
+  int tmp = 0;
+
   uint64_t pSOR = 0, pEOR = 0, pSOF = 0, pEOF = 0, pMID = 0, iEOF = 0, def = 0, bram = 0;
 
   time_point begin = steady_clock::now();
@@ -59,6 +61,9 @@ int main() {
              Assuming no packet loss, extra fragmentation or MTU changing size*/
           received_size = recv(fds[i].fd, inputQueues[i], max_packet_size, 0);
 
+          std::cout << std::dec << "Index: " << tmp << "\t Chip ID: " << i << "\n";
+          ++tmp;
+
           //! This shouldn't happen but Henk has this check in his code
           //! Maybe it's a good idea to keep it
           if (received_size <= 0) break;
@@ -68,7 +73,10 @@ int main() {
           ++packets;
 
           pixel_packet = (uint64_t *) inputQueues[i];
-          for( int i = 0; i < received_size/sizeofuint64_t; ++i, ++pixel_packet) {
+
+          for( int j = 0; j < received_size/sizeofuint64_t; ++j, ++pixel_packet) {
+              //! Is it necessary to reverse the byte order and then do the & PKT_TYPE_MASK?
+              //! Couldn't you just flip the MASK and get the same results?
               // Reverse the byte order
               char *bytes = (char *) &pixel_word;
               char *p     = (char *) pixel_packet;
@@ -76,7 +84,6 @@ int main() {
                   bytes[i] = p[7-i];
               }
               *pixel_packet = pixel_word;
-
               type = (*pixel_packet) & PKT_TYPE_MASK;
 
               switch (type) {
@@ -130,6 +137,8 @@ int main() {
                    * or the SPIDR Register Map is out of date */
 
                   // DEV_DATA_COMPRESSED?
+                  std::cout << std::hex << "ChipID: " << i << " WordPosition: " << j << " " << " PixelWord: " << pixel_word << " PixelPacket: " << pixel_packet << "\n";
+
                   ++bram;
                   break;
               default:
@@ -149,7 +158,7 @@ int main() {
 
       frames = calculateNumberOfFrames(packets, number_of_chips, packets_per_frame);
 
-      if (frames == nr_of_triggers) {
+      if (frames == 1 /*nr_of_triggers*/) {
         //! This can never be triggered when it should if the emulator is running and not pinned to
         //! a different physical CPU core that this process.
 
