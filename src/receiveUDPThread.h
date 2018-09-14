@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <cstring>
+#include <QVector>
 
 #include "colors.h" // Just for pretty terminal colour printing
 
@@ -39,7 +40,9 @@ const int MPX_PIXEL_COLUMNS      = 256;
 
 const int number_of_chips = 4;
 const int TCPPort = 50000;
-const std::string socketIPAddr = "127.0.0.1";
+//const std::string socketIPAddr = "127.0.0.1";
+const std::string socketIPAddr = "192.168.100.10";
+//const std::string socketIPAddr = "192.168.1.10";
 
 SpidrController *spidrcontrol = nullptr;
 struct sockaddr_in listen_address; // My address
