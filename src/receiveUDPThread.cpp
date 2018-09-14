@@ -444,17 +444,17 @@ bool initFileDescriptorsAndBindToPorts()
 
 bool startTrigger(bool print)
 {
+    if (print) {
+        std::cout << "\n[START]\n";
+    }
     if (readoutMode_sequential) {
       spidrcontrol->startAutoTrigger();
     } else {
       timeout = float(1/continuousRW_frequency);
-      printf("trig_freq_mhz = %d, continuousRW_frequency = %d", trig_freq_mhz, continuousRW_frequency);
+      printf("trig_freq_mhz = %d, continuousRW_frequency = %d\n", trig_freq_mhz, continuousRW_frequency);
       spidrcontrol->startContReadout(continuousRW_frequency);
     }
 
-    if (print) {
-        std::cout << "\n[START]\n";
-    }
     return true;
 }
 
@@ -487,12 +487,12 @@ void printEndOfRunInformation(uint64_t frames, uint64_t packets, time_point begi
     float time_per_frame      = float(t) / nr_of_triggers / 1000000.;
     float processing_overhead = -1;
     if (readoutMode_sequential) {
-        processing_overhead = 1000. * ((float(t / 1000.) / nr_of_triggers) -
+        processing_overhead = 1000. * (((t / 1000) / nr_of_triggers) -
                                      trig_length_us -
                                      trig_deadtime_us);
     } else {
-        processing_overhead = 1000. * ((float(t / 1000.) / nr_of_triggers) -
-                                       (1/continuousRW_frequency));
+        std::cout << "\nt = " << t << " triggers = " << nr_of_triggers << " cont_freq = " << continuousRW_frequency << "\n";
+        processing_overhead = (t / 1000 / nr_of_triggers) - 1000000 * (1/continuousRW_frequency);
     }
     printf("Time per frame = %.5f ms \nProcessing overhead = %.1f ns\n",
            time_per_frame,
