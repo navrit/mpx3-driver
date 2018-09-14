@@ -420,6 +420,8 @@ bool startTrigger(bool print)
     if (readoutMode_sequential) {
       spidrcontrol->startAutoTrigger();
     } else {
+      timeout = float(1/continuousRW_frequency);
+      printf("trig_freq_mhz = %d, continuousRW_frequency = %d", trig_freq_mhz, continuousRW_frequency);
       spidrcontrol->startContReadout(continuousRW_frequency);
     }
 
@@ -456,10 +458,15 @@ void printEndOfRunInformation(uint64_t frames, uint64_t packets, time_point begi
     printf("Time to process frames = %.6e μs = %f s\n", t / 1000., t /
            1000000000.);
     float time_per_frame      = float(t) / nr_of_triggers / 1000000.;
-    float processing_overhead = 1000. *
-                                ((float(t / 1000.) / nr_of_triggers) -
-                                 trig_length_us -
-                                 trig_deadtime_us);
+    float processing_overhead = -1;
+    if (readoutMode_sequential) {
+        processing_overhead = 1000. * ((float(t / 1000.) / nr_of_triggers) -
+                                     trig_length_us -
+                                     trig_deadtime_us);
+    } else {
+        processing_overhead = 1000. * ((float(t / 1000.) / nr_of_triggers) -
+                                       (1/continuousRW_frequency));
+    }
     printf("Time per frame = %.5f ms \nProcessing overhead = %.1f ns\n",
            time_per_frame,
            processing_overhead);
