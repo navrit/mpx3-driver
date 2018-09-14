@@ -373,9 +373,36 @@ bool initDetector()
     // Initialise SPIDR acquisition - trigger, number of links etc.
     for (int i = 0; i < number_of_chips; i++) {
       spidrcontrol->setPs(i, 3);
+      spidrcontrol->setEqThreshH(i, false);
+      spidrcontrol->setInternalTestPulse(i, true);
+      spidrcontrol->setDiscCsmSpm(i, 0); //! In Eq mode using 0: select DiscL, 1: selects DiscH
+      spidrcontrol->setCsmSpm(i, 0); //! Single pixel mode
+      spidrcontrol->setPolarity(i, true); //! Use Positive polarity
+      spidrcontrol->setGainMode(i, 1); //! HGM
+      spidrcontrol->setPixelDepth(i, 12, false, false ); //! 12 bit, single frame readout
+      spidrcontrol->setColourMode(i, false); //! Fine pitch mode
     }
     spidrcontrol->resetCounters();
     spidrcontrol->setLogLevel(0);
+
+    QVector<uint8_t> _chipIDELAYS = {15, 15, 15, 10};
+    spidrcontrol->setSpidrReg(0x10A0, _chipIDELAYS[0], true);
+    spidrcontrol->setSpidrReg(0x10A4, _chipIDELAYS[1], true);
+    spidrcontrol->setSpidrReg(0x10A8, _chipIDELAYS[2], true);
+    spidrcontrol->setSpidrReg(0x10AC, _chipIDELAYS[3], true);
+
+    unsigned int val1 = 0x5; // External shutter IN | Connector 1, signal 1
+    val1 = val1;
+    unsigned int val2 = 0x4; // Debug shutter OUT (read back) | Connector 1, signal 3
+    val2 = val2 << 8;
+    // mask
+    unsigned int val = val1 | val2;
+    //qDebug() << "HDMI Setting : " << val;
+    spidrcontrol->setSpidrReg(0x0810, val, true);
+
+    spidrcontrol->setBiasSupplyEna( true );
+    spidrcontrol->setBiasVoltage( 100 );
+
     spidrcontrol->setShutterTriggerConfig(trig_mode,
                                           trig_length_us,
                                           trig_freq_mhz,
