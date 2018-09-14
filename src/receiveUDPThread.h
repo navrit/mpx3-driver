@@ -95,7 +95,8 @@ void printDebuggingOutput(uint64_t packets, int packets_per_frame,
 void printEndOfRunInformation(uint64_t frames, uint64_t packets,
                               time_point begin, int triggers,
                               int trig_length_us, int trig_deadtime_us);
+void doEndOfRunTests(int number_of_chips, uint64_t pMID, uint64_t pSOR, uint64_t pEOR, uint64_t pSOF, uint64_t pEOF, uint64_t iMID, uint64_t iSOF, uint64_t iEOF, uint64_t def);
 void stopTrigger();
-void cleanup();
+void cleanup(bool print = true);
 
 #endif // RECEIVEUDPTHREAD_H
