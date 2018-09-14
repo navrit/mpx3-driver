@@ -57,7 +57,7 @@ const int portno = 8192;
 const int trig_mode = 4;          //! Auto-trigger mode
 const int trig_length_us = 500;   //! [us]
 const int trig_deadtime_us = 500; //! [us]
-const int trig_freq_mhz = 40000; /*int( 1000 * ( 1. / (1.1*((double)trig_length_us/1000000)) ));*/
+const int trig_freq_mhz = int( 1000 * ( 1. / (1.1*((double)trig_length_us/1000000)) ));
 
 const uint64_t nr_of_triggers = 10000;
 const int continuousRW_frequency = 2000;                        // Hz?
