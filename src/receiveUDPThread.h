@@ -25,16 +25,14 @@ typedef std::chrono::nanoseconds ns;
 //! Same order as switch, case statement
 const uint64_t PKT_TYPE_MASK     = 0xF000000000000000;
 
-const uint64_t MY_PKT_TYPE_MASK  = 0x00000000000000F0;
-
-const uint64_t PIXEL_DATA_SOR    = 0xA0; //! #2
-const uint64_t PIXEL_DATA_EOR    = 0xE0; //! #3
-const uint64_t PIXEL_DATA_SOF    = 0xB0; //! #7
-const uint64_t PIXEL_DATA_EOF    = 0x70; //! #5
-const uint64_t PIXEL_DATA_MID    = 0x30; //! #1 Most frequent
-const uint64_t INFO_HEADER_SOF   = 0x90; //! #6
-const uint64_t INFO_HEADER_MID   = 0x10; //! #4
-const uint64_t INFO_HEADER_EOF   = 0xD0; //! #8
+const uint64_t PIXEL_DATA_SOR    = 0xA000000000000000; //! #2
+const uint64_t PIXEL_DATA_EOR    = 0xE000000000000000; //! #3
+const uint64_t PIXEL_DATA_SOF    = 0xB000000000000000; //! #7
+const uint64_t PIXEL_DATA_EOF    = 0x7000000000000000; //! #5
+const uint64_t PIXEL_DATA_MID    = 0x3000000000000000; //! #1 Most frequent
+const uint64_t INFO_HEADER_SOF   = 0x9000000000000000; //! #6
+const uint64_t INFO_HEADER_MID   = 0x1000000000000000; //! #4
+const uint64_t INFO_HEADER_EOF   = 0xD000000000000000; //! #8
 //! End of Table 54
 
 const int MPX_PIXEL_COLUMNS      = 256;

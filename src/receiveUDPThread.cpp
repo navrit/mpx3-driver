@@ -33,7 +33,7 @@ int main() {
   bool finished = false;
   int ret = 1;
   int received_size = 0;
-  uint64_t *pixel_packet, pixel_word;
+  uint64_t *pixel_packet;
   uint64_t type;
   int sizeofuint64_t = sizeof(uint64_t);
 
@@ -79,17 +79,8 @@ int main() {
           pixel_packet = (uint64_t *) inputQueues[i];
 
           for( int j = 0; j < received_size/sizeofuint64_t; ++j, ++pixel_packet) {
-              //! Is it necessary to reverse the byte order and then do the & PKT_TYPE_MASK?
-              //! Couldn't you just flip the MASK and get the same results?
 
-              // Reverse the byte order
-              char *bytes = (char *) &pixel_word;
-              char *p     = (char *) pixel_packet;
-              for( int i=0; i < 8; ++i ) {
-                  bytes[i] = p[7-i];
-              }
-              *pixel_packet = pixel_word;
-              type = (*pixel_packet) & MY_PKT_TYPE_MASK;
+              type = (*pixel_packet) & PKT_TYPE_MASK;
 
               switch (type) {
               case PIXEL_DATA_SOR:
@@ -137,9 +128,8 @@ int main() {
                   ++iEOF;
                   break;
               default:
-                  // Some kind of fucking rubbish??
-                   // Henk doesn't bother explaining what this is
-                   // Maybe it's data, who knows
+                  // Rubbish packets - skip these
+                  // In theory, there should be none ever
                   if (type != 0) {
                       std::cout << "Rubbish packet count: " << rubbish_counter << ": " << type << "\n";
                       ++rubbish_counter;
