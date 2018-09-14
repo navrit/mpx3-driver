@@ -452,7 +452,8 @@ bool startTrigger(bool print)
     } else {
       timeout = float(1/continuousRW_frequency);
       printf("trig_freq_mhz = %d, continuousRW_frequency = %d\n", trig_freq_mhz, continuousRW_frequency);
-      spidrcontrol->setSpidrReg(0x800A0298, ((1/continuousRW_frequency)/(7.8125E-9))); //! 3.0.2 Trigger Frequency Register
+      //spidrcontrol->setSpidrReg(0x800A0298, ((1/continuousRW_frequency)/(7.8125E-9))); //! 3.0.2 Trigger Frequency Register
+      //! This may have crashed my SPIDR...
       spidrcontrol->startContReadout(continuousRW_frequency);
     }
 
