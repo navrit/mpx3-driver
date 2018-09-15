@@ -62,7 +62,11 @@ int trig_freq_mhz = 0; //! Set this depending on readoutMode_sequential later
 const uint64_t nr_of_triggers = 10000;
 const int continuousRW_frequency = 2000;                        // Hz?
 int timeout = (trig_length_us + trig_deadtime_us) / 1000; // ms?
-const bool readoutMode_sequential = false;
+const bool readoutMode_sequential = true;
+
+int infoIndex = 0;
+char infoHeader[MPX_PIXEL_COLUMNS/8]; //! Single info header (OMR)
+bool isCounterhFrame = false;
 
 uint64_t packets = 0, frames = 0;
 #pragma GCC diagnostic push
