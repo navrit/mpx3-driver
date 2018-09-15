@@ -403,6 +403,11 @@ bool initDetector()
     spidrcontrol->setBiasSupplyEna( true );
     spidrcontrol->setBiasVoltage( 100 );
 
+    if (readoutMode_sequential) {
+        trig_freq_mhz = int( 1E3 * ( 1. / (double(( trig_length_us + trig_deadtime_us ))/1E6)));
+    } else {
+        trig_freq_mhz = int( 1E3 * ( 1. / (1.0*(double(trig_length_us/1E6))) ));
+    }
     spidrcontrol->setShutterTriggerConfig(trig_mode,
                                           trig_length_us,
                                           trig_freq_mhz,
@@ -489,11 +494,11 @@ void printEndOfRunInformation(uint64_t frames, uint64_t packets, time_point begi
     float time_per_frame      = float(t) / nr_of_triggers / 1000000.;
     float processing_overhead = -1;
     if (readoutMode_sequential) {
-        processing_overhead = 1000. * (((t / 1000) / nr_of_triggers) -
+        processing_overhead = 1000. * ((float(t / 1000) / nr_of_triggers) -
                                      trig_length_us -
                                      trig_deadtime_us);
     } else {
-        std::cout << "\nt = " << t << " triggers = " << nr_of_triggers << " cont_freq = " << continuousRW_frequency << "\n";
+//        std::cout << "\nt = " << t << " triggers = " << nr_of_triggers << " cont_freq = " << continuousRW_frequency << "\n";
         processing_overhead = (t / 1000 / nr_of_triggers) - 1000000 * (1/continuousRW_frequency);
     }
     printf("Time per frame = %.5f ms \nProcessing overhead = %.1f ns\n",
