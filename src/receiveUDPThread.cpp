@@ -584,8 +584,8 @@ void cleanup(bool print)
 void doEndOfRunTests(int number_of_chips, uint64_t pMID, uint64_t pSOR, uint64_t pEOR, uint64_t pSOF, uint64_t pEOF, uint64_t iMID, uint64_t iSOF, uint64_t iEOF, uint64_t def)
 {
     printf("\nPer chip packet statistics and tests:\n-------------------------------------");
-    printf("\npMID\tpSOR\tpEOR\tpSOF\tpEOF\tiMID\tiSOF\tiEOF\tDef.\n");
-    printf("%-6lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\n\n", pMID/number_of_chips, pSOR/number_of_chips, pEOR/number_of_chips, pSOF/number_of_chips, pEOF/number_of_chips, iMID/number_of_chips, iSOF/number_of_chips, iEOF/number_of_chips, def/number_of_chips);
+    printf("\npMID\t\tpSOR\tpEOR\tpSOF\tpEOF\tiSOF\tiMID\tiEOF\tDef.\n");
+    printf("%-6lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\n\n", pMID/number_of_chips, pSOR/number_of_chips, pEOR/number_of_chips, pSOF/number_of_chips, pEOF/number_of_chips, iSOF/number_of_chips, iMID/number_of_chips, iEOF/number_of_chips, def/number_of_chips);
 
     if (pSOR != pEOR) {
         printf("[TEST] [FAIL]\tpSOR != pEOR; %lu != %lu\n", pSOR, pEOR);
@@ -597,18 +597,18 @@ void doEndOfRunTests(int number_of_chips, uint64_t pMID, uint64_t pSOR, uint64_t
     } else {
 //        printf("[TEST] [PASS]\tpSOF == pEOF\n");
     }
-    if (iSOF != iEOF) {
-        printf("[TEST] [FAIL]\tiSOF != iEOF; %lu != %lu\n", iSOF, iEOF);
+    if (iEOF - iMID - iSOF != 0) {
+        printf("[TEST] [FAIL]\tiEOF - iMID - iSOF != 0; %lu - %lu - %lu == %lu\n", iEOF, iMID, iSOF, (iEOF - iMID - iSOF));
     } else {
-//        printf("[TEST] [PASS]\tiSOF == iEOF\n");
+//        printf("[TEST] [PASS]\tiEOF - iMID - iSOF == 0\n");
     }
-    if (iMID/iSOF != 6 || iMID/iEOF != 6) {
-        printf("[TEST] [FAIL]\tiMID/iSOF != 6 = %lu || iMID/iEOF != 6 = %lu\n", iMID/iSOF, iMID/iEOF);
+    if (iMID%7 != 0) {
+        printf("[TEST] [FAIL]\t iMID%7 != 0; %lu %% 7 != 0\n", iMID);
     } else {
-//        printf("[TEST] [PASS]\tiMID/iSOF == %lu && iMID/iEOF == %lu\n", iMID/iSOF, iMID/iEOF);
+//        printf("[TEST] [PASS]\t \n");
     }
-    if (pSOF/number_of_chips != nr_of_triggers || pEOF/number_of_chips != nr_of_triggers || iSOF/number_of_chips != nr_of_triggers || iEOF/number_of_chips != nr_of_triggers) {
-        printf("[TEST] [FAIL]\tnr_of_triggers*number_of_chips != pSOF, pEOF, iSOF, iEOF; %lu != %lu, %lu, %lu or %lu\n", nr_of_triggers, pSOF/number_of_chips, pEOF/number_of_chips, iSOF/number_of_chips, iEOF/number_of_chips);
+    if (pSOF/number_of_chips != nr_of_triggers || pEOF/number_of_chips != nr_of_triggers || iSOF/number_of_chips != nr_of_triggers || iEOF/number_of_chips/8 != nr_of_triggers) {
+        printf("[TEST] [FAIL]\tnr_of_triggers*number_of_chips != pSOF, pEOF, iSOF, iEOF; %lu != %lu, %lu, %lu or %lu\n", nr_of_triggers, pSOF/number_of_chips, pEOF/number_of_chips, iSOF/number_of_chips, iEOF/number_of_chips/8);
     } else {
 //        printf("[TEST] [PASS]\tnr_of_triggers == pSOF/number_of_chips,\n\t\t\t\tpEOF/number_of_chips,\n\t\t\t\tiSOF/number_of_chips,\n\t\t\t\tiEOF/number_of_chips\n");
     }
