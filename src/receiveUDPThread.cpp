@@ -546,17 +546,17 @@ void printEndOfRunInformation(uint64_t frames, uint64_t packets, time_point begi
     printf("\nFrames processed = %lu\n", frames);
     steady_clock::time_point end = steady_clock::now();
     auto t = std::chrono::duration_cast<ns>(end - begin).count();
-    printf("Time to process frames = %.6e μs = %f s\n", t / 1000., t /
-           1000000000.);
-    float time_per_frame      = float(t) / nr_of_triggers / 1000000.;
+    printf("Time to process frames = %.6e μs = %f s\n", t / 1E3, t /
+           1E9);
+    float time_per_frame      = float(t) / nr_of_triggers / 1E6;
     float processing_overhead = -1;
     if (readoutMode_sequential) {
-        processing_overhead = 1000. * ((float(t / 1000) / nr_of_triggers) -
+        processing_overhead = 1E3 * ((float(t / 1E3) / nr_of_triggers) -
                                      trig_length_us -
                                      trig_deadtime_us);
     } else {
-//        std::cout << "\nt = " << t << " triggers = " << nr_of_triggers << " cont_freq = " << continuousRW_frequency << "\n";
-        processing_overhead = (t / 1000 / nr_of_triggers) - 1000000 * (1/continuousRW_frequency);
+        //std::cout << "\nt = " << t << " triggers = " << nr_of_triggers << " cont_freq = " << continuousRW_frequency << " _ " << (double(t) / 1E3 / double(nr_of_triggers)) << " _ " << (1E6 * (1/double(continuousRW_frequency))) << "\n";
+        processing_overhead = 1E3 * ((double(t) / 1E3 / double(nr_of_triggers)) - (1E6 * (1/double(continuousRW_frequency))));
     }
     printf("Time per frame = %.5f ms \nProcessing overhead = %.1f ns\n",
            time_per_frame,
