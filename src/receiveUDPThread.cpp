@@ -107,9 +107,10 @@ int main() {
                   rowPixels += MPX_PIXEL_COLUMNS - (MPX_PIXEL_COLUMNS/pixels_per_word)*pixels_per_word;
 
                   ++rownr_EOR;
-                  if (rownr_SOR+1 != rownr_EOR) {
+
+                  /*if (rownr_SOR+1 != rownr_EOR) {
                       std::cout << "Row # SOR: " << rownr_SOR << " " << pSOF << " - Row # EOR: " << rownr_EOR << " " << pEOF << "\n";
-                  }
+                  }*/
 
                   break;
               case PIXEL_DATA_SOF:
@@ -128,10 +129,10 @@ int main() {
                   //! Henk extracts the FLAGS word here.
                   //! Dexter doesn't use this yet, maybe revisit later
 
-                  row_number_from_packet = int(((*pixel_packet & ROW_COUNT_MASK) >> ROW_COUNT_SHIFT));
+                  /*row_number_from_packet = int(((*pixel_packet & ROW_COUNT_MASK) >> ROW_COUNT_SHIFT));
                   if (row_number_from_packet != 255) {
                       std::cout << ">> " << row_number_from_packet << "\n";
-                  }
+                  }*/
 
                   break;
               case PIXEL_DATA_MID:
