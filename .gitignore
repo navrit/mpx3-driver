@@ -2,5 +2,7 @@ build-receiveUDPThread-*/
 *.stash
 *.o
 *.user
+*.autosave
 Makefile
 receiveUDPThread
+
