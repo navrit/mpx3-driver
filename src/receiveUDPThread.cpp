@@ -41,7 +41,7 @@ int main() {
   int pixels_per_word = 60/pixel_depth; //! TODO get or calculate pixel_depth
 
   int rowPixels = 0;
-  uint64_t row_counter = 0;
+  uint64_t row_counter = 0, row_number_from_packet = -1;
 
   int tmp = 0;
   char *p = nullptr;
@@ -81,6 +81,8 @@ int main() {
           //! Start processing the pixel packet
           pixel_packet = (uint64_t *) inputQueues[i];
 
+          row_number_from_packet = -1;
+
           for( int j = 0; j < received_size/sizeofuint64_t; ++j, ++pixel_packet) {
               type = (*pixel_packet) & PKT_TYPE_MASK;
 
@@ -115,6 +117,11 @@ int main() {
                   rowPixels += pixels_per_word;
                   //! Henk extracts the FLAGS word here.
                   //! Dexter doesn't use this yet, maybe revisit later
+
+                  row_number_from_packet = int(((*pixel_packet & ROW_COUNT_MASK) >> ROW_COUNT_SHIFT));
+                  if (row_number_from_packet != 255) {
+                      std::cout << ">> " << row_number_from_packet << "\n";
+                  }
 
                   break;
               case PIXEL_DATA_MID:
@@ -197,7 +204,7 @@ int main() {
   } while (!finished);
 
   stopTrigger();
-  cleanup();
+  cleanup(true);
   return 0;
 }
 
@@ -509,8 +516,12 @@ void printDebuggingOutput(uint64_t packets, int packets_per_frame, int number_of
     // Some debugging output during a run
     // Print every 2%
 
-    if ((packets % (packets_per_frame * number_of_chips) == 0) &&
-        (frames % (nr_of_triggers / 50) == 0)) {
+    uint number_of_prints = 50;
+
+    if (nr_of_triggers/number_of_prints == 0) {
+        return;
+    } else if ((packets % (packets_per_frame * number_of_chips) == 0) &&
+        (frames % (nr_of_triggers / number_of_prints) == 0)) {
       time_point end = steady_clock::now();
       auto t = std::chrono::duration_cast<us>(end - begin).count();
       printf("%9lu/%-9lu\t%-.0f%%\t%lus\t%lu packets\n", frames, nr_of_triggers,
@@ -561,7 +572,7 @@ void cleanup(bool print)
 void doEndOfRunTests(int number_of_chips, uint64_t pMID, uint64_t pSOR, uint64_t pEOR, uint64_t pSOF, uint64_t pEOF, uint64_t iMID, uint64_t iSOF, uint64_t iEOF, uint64_t def)
 {
     printf("\nPer chip packet statistics and tests:\n-------------------------------------");
-    printf("\npMID\t\tpSOR\tpEOR\tpSOF\tpEOF\tiMID\tiSOF\tiEOF\tDef.\n");
+    printf("\npMID\tpSOR\tpEOR\tpSOF\tpEOF\tiMID\tiSOF\tiEOF\tDef.\n");
     printf("%-6lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\n\n", pMID/number_of_chips, pSOR/number_of_chips, pEOR/number_of_chips, pSOF/number_of_chips, pEOF/number_of_chips, iMID/number_of_chips, iSOF/number_of_chips, iEOF/number_of_chips, def/number_of_chips);
 
     if (pSOR != pEOR) {

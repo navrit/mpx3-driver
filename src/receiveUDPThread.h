@@ -35,6 +35,9 @@ const uint64_t INFO_HEADER_SOF   = 0x9000000000000000; //! #6
 const uint64_t INFO_HEADER_MID   = 0x1000000000000000; //! #4
 const uint64_t INFO_HEADER_EOF   = 0xD000000000000000; //! #8
 //! End of Table 54
+const uint64_t ROW_COUNT_MASK    = 0x0FF0000000000000;
+const uint64_t ROW_COUNT_SHIFT   = 52;
+
 
 const int MPX_PIXEL_COLUMNS      = 256;
 
@@ -59,7 +62,7 @@ const int trig_length_us = 500;   //! [us]
 const int trig_deadtime_us = 500; //! [us]
 int trig_freq_mhz = 0; //! Set this depending on readoutMode_sequential later
 
-const uint64_t nr_of_triggers = 10000;
+const uint64_t nr_of_triggers = 100;
 const int continuousRW_frequency = 2000;                        // Hz?
 int timeout = (trig_length_us + trig_deadtime_us) / 1000; // ms?
 const bool readoutMode_sequential = true;
