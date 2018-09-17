@@ -143,9 +143,13 @@ int main() {
                   }
                   break;
               case INFO_HEADER_SOF:
+                  //! This is really iSOF (N*1) + iMID (N*6) + iEOF (N*1) = 8*N
                   ++iSOF;
+                  [[fallthrough]];
               case INFO_HEADER_MID:
+                  //! This is really iMID (N*6) + iEOF (N*1) = 7*N
                   ++iMID;
+                  [[fallthrough]];
               case INFO_HEADER_EOF:
                   ++iEOF;
 
