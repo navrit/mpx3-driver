@@ -108,7 +108,7 @@ int main() {
 
                   ++rownr_EOR;
                   if (rownr_SOR+1 != rownr_EOR) {
-                      std::cout << "Row # SOR: " << rownr_SOR << " - Row # EOR: " << rownr_EOR << "\n";
+                      std::cout << "Row # SOR: " << rownr_SOR << " " << pSOF << " - Row # EOR: " << rownr_EOR << " " << pEOF << "\n";
                   }
 
                   break;
