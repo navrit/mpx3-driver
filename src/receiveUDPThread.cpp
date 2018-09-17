@@ -82,6 +82,7 @@ int main() {
           pixel_packet = (uint64_t *) inputQueues[i];
 
           row_number_from_packet = -1;
+          int rownr_EOR = -1, rownr_SOR = -1;
 
           for( int j = 0; j < received_size/sizeofuint64_t; ++j, ++pixel_packet) {
               type = (*pixel_packet) & PKT_TYPE_MASK;
@@ -95,12 +96,20 @@ int main() {
 
                   rowPixels = 0;
                   rowPixels += pixels_per_word;
+
+                  ++rownr_SOR;
+
                   break;
               case PIXEL_DATA_EOR:
                   ++pEOR;
                   // Henk checks for lost pixels again
                   // Henk checks for row counter > 256, when would this ever happen?
                   rowPixels += MPX_PIXEL_COLUMNS - (MPX_PIXEL_COLUMNS/pixels_per_word)*pixels_per_word;
+
+                  ++rownr_EOR;
+                  if (rownr_SOR+1 != rownr_EOR) {
+                      std::cout << "Row # SOR: " << rownr_SOR << " - Row # EOR: " << rownr_EOR << "\n";
+                  }
 
                   break;
               case PIXEL_DATA_SOF:
@@ -110,6 +119,7 @@ int main() {
                   rowPixels += pixels_per_word;
 
                   ++row_counter;
+
                   break;
               case PIXEL_DATA_EOF:
                   ++pEOF;
