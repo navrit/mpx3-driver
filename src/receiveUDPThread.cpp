@@ -144,10 +144,8 @@ int main() {
                   break;
               case INFO_HEADER_SOF:
                   ++iSOF;
-                  continue;
               case INFO_HEADER_MID:
                   ++iMID;
-                  continue;
               case INFO_HEADER_EOF:
                   ++iEOF;
 
