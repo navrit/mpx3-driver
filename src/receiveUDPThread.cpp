@@ -1,5 +1,7 @@
 #include "receiveUDPThread.h"
 
+#include <iomanip> // For pretty column printing --> std::setw()
+
 using time_point = std::chrono::steady_clock::time_point;
 using steady_clock = std::chrono::steady_clock;
 
@@ -37,11 +39,11 @@ int main() {
   int sizeofuint64_t = sizeof(uint64_t);
 
   int rubbish_counter = 0;
-  int pixel_depth = 12;
-  int pixels_per_word = 60/pixel_depth; //! TODO get or calculate pixel_depth
+  int counter_depth = 12;
+  int pixels_per_word = 60/counter_depth; //! TODO get or calculate pixel_depth
 
   int rowPixels = 0;
-  uint64_t row_counter = 0, row_number_from_packet = -1;
+  uint64_t row_counter = 0;//, row_number_from_packet = -1;
 
   int tmp = 0;
   char *p = nullptr;
@@ -81,11 +83,13 @@ int main() {
           //! Start processing the pixel packet
           pixel_packet = (uint64_t *) inputQueues[i];
 
-          row_number_from_packet = -1;
+          //row_number_from_packet = -1;
           int rownr_EOR = -1, rownr_SOR = -1;
 
           for( int j = 0; j < received_size/sizeofuint64_t; ++j, ++pixel_packet) {
               type = (*pixel_packet) & PKT_TYPE_MASK;
+
+              hexdumpAndParsePacket(pixel_packet, counter_depth);
 
               switch (type) {
               case PIXEL_DATA_SOR:
@@ -584,9 +588,13 @@ void cleanup(bool print)
 
 void doEndOfRunTests(int number_of_chips, uint64_t pMID, uint64_t pSOR, uint64_t pEOR, uint64_t pSOF, uint64_t pEOF, uint64_t iMID, uint64_t iSOF, uint64_t iEOF, uint64_t def)
 {
-    printf("\nPer chip packet statistics and tests:\n-------------------------------------");
-    printf("\npMID\t\tpSOR\tpEOR\tpSOF\tpEOF\tiSOF\tiMID\tiEOF\tDef.\n");
-    printf("%-6lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\n\n", pMID/number_of_chips, pSOR/number_of_chips, pEOR/number_of_chips, pSOF/number_of_chips, pEOF/number_of_chips, iSOF/number_of_chips, iMID/number_of_chips, iEOF/number_of_chips, def/number_of_chips);
+    std::cout << "\nPer chip packet statistics and tests:\n----------------------------------------------------------------\n";
+    int w = 12;
+    std::cout << std::setw(w) << "pMID" << std::setw(w) << "pSOR" << std::setw(w) << "pEOR" << std::setw(w) << "pSOF" << std::setw(w) << "pEOF" << "\n";
+    std::cout << std::setw(w) << pMID/number_of_chips << std::setw(w) << pSOR/number_of_chips << std::setw(w) << pEOR/number_of_chips << std::setw(w) << pSOF/number_of_chips << std::setw(w)  << pEOF/number_of_chips <<  "\n\n";
+
+    std::cout << std::setw(w) << "iSOF" << std::setw(w) << "iMID" << std::setw(w) << "iEOF" << std::setw(w) << "Def." << "\n";
+    std::cout << std::setw(w) << iSOF/number_of_chips << std::setw(w) << iMID/number_of_chips << std::setw(w) << iEOF/number_of_chips << std::setw(w) << def/number_of_chips << "\n\n";
 
     if (pSOR != pEOR) {
         printf("[TEST] [FAIL]\tpSOR != pEOR; %lu != %lu\n", pSOR, pEOR);
@@ -604,7 +612,7 @@ void doEndOfRunTests(int number_of_chips, uint64_t pMID, uint64_t pSOR, uint64_t
 //        printf("[TEST] [PASS]\tiEOF - iMID - iSOF == 0\n");
     }
     if (iMID%7 != 0) {
-        printf("[TEST] [FAIL]\t iMID%7 != 0; %lu %% 7 != 0\n", iMID);
+        printf("[TEST] [FAIL]\t iMID%%7 != 0; %lu %% 7 != 0\n", iMID);
     } else {
 //        printf("[TEST] [PASS]\t \n");
     }
@@ -618,4 +626,136 @@ void doEndOfRunTests(int number_of_chips, uint64_t pMID, uint64_t pSOR, uint64_t
     } else {
 //        printf("[TEST] [PASS]\tdef == 0\n");
     }
+}
+
+void hexdumpAndParsePacket(uint64_t* pixel_packet, int counter_bits)
+{
+    int pix_per_word = 60/counter_bits; // 60 bytes = sizeof(uint64_t) - sizeof(int)
+    uint64_t pixelword = *pixel_packet;
+    std::stringstream ss;
+    int row;
+
+    uint64_t type = pixelword & PKT_TYPE_MASK;
+
+    switch( type ) {
+    case PIXEL_DATA_SOR:
+        ss << "pSOR " << std::hex << pixelword << "\t";
+
+        for (int i = 0; i < pix_per_word; ++i) {
+            ss << std::dec << std::setw(5) << ((pixelword >> (i*counter_bits)) & 0xFFF) << " ";
+        }
+        break;
+    case PIXEL_DATA_EOR:
+        row = int((pixelword & ROW_COUNT_MASK) >> ROW_COUNT_SHIFT);
+        ss << "pEOR Row = " << row << "\n";
+        ss << "pEOR " << std::hex << pixelword << "\t";
+        for (int i = 0; i < pix_per_word; ++i) {
+            ss << std::dec << std::setw(5) << ((pixelword << (i*counter_bits)) & 0xFFF) << " ";
+        }
+
+        break;
+    case PIXEL_DATA_SOF:
+        ss << std::hex << "pSOF " << std::hex << pixelword << "\t";
+        for (int i = 0; i < pix_per_word; ++i) {
+            ss << std::dec << std::setw(5) << ((pixelword >> (i*counter_bits)) & 0xFFF) << " ";
+        }
+
+        break;
+    case PIXEL_DATA_EOF: {
+        //! Extract the row number, flags (something then frame ID), last pixel,
+        ss << std::hex << "pEOF " << std::hex << pixelword << "\t";
+
+        ss << std::setw(5) << std::dec << (pixelword & 0xFFF) << " ";
+
+        uint64_t flags = (((pixelword) & FRAME_FLAGS_MASK) >> FRAME_FLAGS_SHIFT);
+        ss << std::setw(5) << std::hex << flags << " ";
+        //! TODO Implement this if necessary
+        //! NOTES on FLAGS
+        /* variable FLAGS: std_logic_vector(15 downto 0); --flags are shifted in the last packet (EOF) of every frame, to show some status bits / frame counter.
+         --Flag a warning when the fifo is full, this means that the MPX3 clock will be stopped.
+         if(fe_fifo_full_flag = '0') then
+           FLAGS(8) := '1';
+         end if;
+         -Flag a warning when Continuousread write mode is 0, and the shutter is open while readout is still busy
+        if(mpx_readout_state /= IDLE and (Shutter='1' and OMRClkOut(3) = '0')) then
+            FLAGS(9) := '1';
+        end if;
+        case (mpx_readout_state) is
+          when IDLE => --wait for a rising edge on RxFrame
+              FLAGS := x"00"&framecnt;
+        */
+        row = (((pixelword) & ROW_COUNT_MASK) >> ROW_COUNT_SHIFT);
+        ss << std::setw(5) << std::dec << row;
+
+        break;
+    }
+    case PIXEL_DATA_MID:
+        ss << "pMID " << std::hex << pixelword << "\t";
+        for (int i = 1; i < pix_per_word; ++i) {
+            ss << std::setw(5) << std::dec << ((pixelword >> (i*counter_bits)) & 0xFFF) << " ";
+        }
+
+        break;
+    case INFO_HEADER_SOF:
+        //! This is iSOF (N*1) = N
+        ss << std::hex << "iSOF " << std::hex << pixelword << "\t";
+        break;
+        //[[fallthrough]];
+    case INFO_HEADER_MID: {
+        //! This is iMID (N*6) = 6*N
+        int low = (pixelword & 0xFFFFFFFF);
+        ss << std::hex << "iMID " << std::hex << pixelword << "\t" << low;
+        break;
+        //[[fallthrough]];
+    }
+    case INFO_HEADER_EOF: {
+        //! This is iEOF (N*1) = N
+        //!
+        //! OMR Reconstruction notes:
+        //! ------------------------------------
+        //! There's one OMR per frame
+        //! With some bits in iMID and iEOF
+        //! The bits are all reversed
+        //! We have the mode, crw/srw, countL, colormode, csm/spm there
+        //!
+        //! Henk makes the assumption that the SPIDR is in the state that he just set. This isn't unreasonable but it may not always be the case. Actually knowing what state the SPIDR is in will be useful for debugging at least.
+        //!
+        //! TODO Read OMR from the packets
+
+        ss << std::hex << "iEOF " << std::hex << pixelword << "\n";
+
+        char *p = (char *) pixel_packet;
+        if( type == INFO_HEADER_SOF )
+            infoIndex = 0;
+        if( infoIndex <= 256/8-4 )
+            for( int i=0; i<4; ++i, ++infoIndex )
+                infoHeader[infoIndex] = p[i];
+        if( type == INFO_HEADER_EOF ) {
+            // Format and interpret:
+            // e.g. OMR has to be mirrored per byte;
+            // in order to distinguish CounterL from CounterH readout
+            // it's sufficient to look at the last byte, containing
+            // the three operation mode bits
+            char byt = infoHeader[infoIndex-1];
+            // Mirroring of byte with bits 'abcdefgh':
+            byt = ((byt & 0xF0)>>4) | ((byt & 0x0F)<<4);// efghabcd
+            byt = ((byt & 0xCC)>>2) | ((byt & 0x33)<<2);// ghefcdab
+            byt = ((byt & 0xAA)>>1) | ((byt & 0x55)<<1);// hgfedcba
+            if( (byt & 0x7) == 0x4 ) // 'Read CounterH'
+                isCounterhFrame = true;
+            else
+                isCounterhFrame = false;
+            ss << "iEOF isCounterHFrame = " << isCounterhFrame << "\n";
+        }
+
+        break;
+    }
+    default:
+        ss << std::hex << pixelword << " ";
+        break;
+    }
+
+    ss << ";";
+    std::string mystr = ss.str();
+    std::cout << mystr << "\n";
 }
