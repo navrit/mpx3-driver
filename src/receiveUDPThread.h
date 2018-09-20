@@ -59,13 +59,13 @@ const int max_buffer_size =
 const int portno = 8192;
 
 const int trig_mode = 4;          //! Auto-trigger mode
-const int trig_length_us = 500;   //! [us]
-const int trig_deadtime_us = 500; //! [us]
+const int trig_length_us = 250;   //! [us]
+const int trig_deadtime_us = 250; //! [us]
 int trig_freq_mhz = 0; //! Set this depending on readoutMode_sequential later
 
 const uint64_t nr_of_triggers = 10000;
 const int continuousRW_frequency = 2000; //! [Hz]
-int timeout = (trig_length_us + trig_deadtime_us) / 1000; //! [ms]
+int timeout = 0; //! Set this depending on readoutMode_sequential later
 const bool readoutMode_sequential = false;
 
 int infoIndex = 0;

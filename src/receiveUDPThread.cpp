@@ -513,9 +513,11 @@ bool startTrigger(bool print)
         std::cout << "\n[START]\n";
     }
     if (readoutMode_sequential) {
+      timeout = (trig_length_us + trig_deadtime_us) / 1000.; //! [ms]
       spidrcontrol->startAutoTrigger();
     } else {
       timeout = double(1/continuousRW_frequency) * 1.1;
+      trig_freq_mhz = continuousRW_frequency*1E3;
       printf("trig_freq_mhz = %d, continuousRW_frequency = %d\n", trig_freq_mhz, continuousRW_frequency);
       //spidrcontrol->setSpidrReg(0x800A0298, ((1/continuousRW_frequency)/(7.8125E-9))); //! 3.0.2 Trigger Frequency Register
       //! This may have crashed my SPIDR...
