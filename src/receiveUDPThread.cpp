@@ -53,11 +53,10 @@ int main() {
 
   uint64_t pSOR = 0, pEOR = 0, pSOF = 0, pEOF = 0, pMID = 0, iSOF = 0, iMID = 0, iEOF = 0, def = 0;
 
-  time_point begin = steady_clock::now();
-
   startTrigger();
   std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
 
+  time_point begin = steady_clock::now();
   printDebuggingOutput(packets, packets_per_frame, number_of_chips, calculateNumberOfFrames(packets, number_of_chips, packets_per_frame), begin);
 
   do {
@@ -520,7 +519,7 @@ bool startTrigger(bool print)
       timeout = (trig_length_us + trig_deadtime_us) / 1000.; //! [ms]
       spidrcontrol->startAutoTrigger();
     } else {
-      timeout = double(1/continuousRW_frequency) * 1.1;
+      timeout = double(1/continuousRW_frequency);
       trig_freq_mhz = continuousRW_frequency*1E3;
       printf("trig_freq_mhz = %d, continuousRW_frequency = %d\n", trig_freq_mhz, continuousRW_frequency);
       //spidrcontrol->setSpidrReg(0x800A0298, ((1/continuousRW_frequency)/(7.8125E-9))); //! 3.0.2 Trigger Frequency Register
