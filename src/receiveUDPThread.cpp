@@ -43,7 +43,7 @@ int main() {
   int pixels_per_word = 60/counter_depth; //! TODO get or calculate pixel_depth
 
   int rowPixels = 0;
-  uint64_t row_counter = 0;//, row_number_from_packet = -1;
+  uint64_t row_counter = 0;
 
   int tmp = 0;
   char *p = nullptr;
@@ -69,12 +69,12 @@ int main() {
              Assuming no packet loss, extra fragmentation or MTU changing size*/
           received_size = recv(fds[i].fd, inputQueues[i], max_packet_size, 0);
 
-          //std::cout << std::dec << "Index: " << tmp << "\t Chip ID: " << i << "\n";
+          //std::cout << std::dec << "Index: " << tmp << "\t Chip ID: " << i << "\t Received size: " << received_size << "\n";
           ++tmp;
 
           //! This shouldn't happen but Henk has this check in his code
           //! Maybe it's a good idea to keep it
-          if (received_size <= 0) break;
+          //if (received_size <= 0) break;
 
           /* Count the number of packets received.
              Could calculate lost packets like Henk does, is this necessary? */
@@ -89,7 +89,9 @@ int main() {
           for( int j = 0; j < received_size/sizeofuint64_t; ++j, ++pixel_packet) {
               type = (*pixel_packet) & PKT_TYPE_MASK;
 
-              hexdumpAndParsePacket(pixel_packet, counter_depth);
+              /*if (i == 0) {
+                  hexdumpAndParsePacket(pixel_packet, counter_depth, true, i);
+              }*/
 
               switch (type) {
               case PIXEL_DATA_SOR:
@@ -212,7 +214,7 @@ int main() {
 
         finished = true; //! Poll loop exit condition
       } else {
-        printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
+        //printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
       }
     } else if (ret == -1) {
       //! An error occurred, never actually seen this triggered
@@ -628,18 +630,21 @@ void doEndOfRunTests(int number_of_chips, uint64_t pMID, uint64_t pSOR, uint64_t
     }
 }
 
-void hexdumpAndParsePacket(uint64_t* pixel_packet, int counter_bits)
+void hexdumpAndParsePacket(uint64_t* pixel_packet, int counter_bits, bool skip_data_packets, int chip)
 {
+    //! ONLY DEBUGGING USE
+    //! This is slow and affects the number of packets received somehow...
+
     int pix_per_word = 60/counter_bits; // 60 bytes = sizeof(uint64_t) - sizeof(int)
     uint64_t pixelword = *pixel_packet;
     std::stringstream ss;
-    int row;
+    int row = 0;
 
     uint64_t type = pixelword & PKT_TYPE_MASK;
 
     switch( type ) {
     case PIXEL_DATA_SOR:
-        ss << "pSOR " << std::hex << pixelword << "\t";
+        ss << chip << " pSOR " << std::hex << pixelword << "\t";
 
         for (int i = 0; i < pix_per_word; ++i) {
             ss << std::dec << std::setw(5) << ((pixelword >> (i*counter_bits)) & 0xFFF) << " ";
@@ -647,15 +652,15 @@ void hexdumpAndParsePacket(uint64_t* pixel_packet, int counter_bits)
         break;
     case PIXEL_DATA_EOR:
         row = int((pixelword & ROW_COUNT_MASK) >> ROW_COUNT_SHIFT);
-        ss << "pEOR Row = " << row << "\n";
-        ss << "pEOR " << std::hex << pixelword << "\t";
+        ss << chip << " pEOR Row = " << row << " " << "\n";
+        ss << chip << " pEOR " << std::hex << pixelword << "\t";
         for (int i = 0; i < pix_per_word; ++i) {
             ss << std::dec << std::setw(5) << ((pixelword << (i*counter_bits)) & 0xFFF) << " ";
         }
 
         break;
     case PIXEL_DATA_SOF:
-        ss << std::hex << "pSOF " << std::hex << pixelword << "\t";
+        ss << chip << " pSOF " << std::hex << pixelword << "\t";
         for (int i = 0; i < pix_per_word; ++i) {
             ss << std::dec << std::setw(5) << ((pixelword >> (i*counter_bits)) & 0xFFF) << " ";
         }
@@ -663,7 +668,7 @@ void hexdumpAndParsePacket(uint64_t* pixel_packet, int counter_bits)
         break;
     case PIXEL_DATA_EOF: {
         //! Extract the row number, flags (something then frame ID), last pixel,
-        ss << std::hex << "pEOF " << std::hex << pixelword << "\t";
+        ss << chip << " pEOF Row = " << row << " " << std::hex << pixelword << "\t";
 
         ss << std::setw(5) << std::dec << (pixelword & 0xFFF) << " ";
 
@@ -690,21 +695,24 @@ void hexdumpAndParsePacket(uint64_t* pixel_packet, int counter_bits)
         break;
     }
     case PIXEL_DATA_MID:
-        ss << "pMID " << std::hex << pixelword << "\t";
-        for (int i = 1; i < pix_per_word; ++i) {
-            ss << std::setw(5) << std::dec << ((pixelword >> (i*counter_bits)) & 0xFFF) << " ";
+        if (skip_data_packets) {
+            return;
+        } else {
+            ss << chip << " pMID " << std::hex << pixelword << "\t";
+            for (int i = 1; i < pix_per_word; ++i) {
+                ss << std::setw(5) << std::dec << ((pixelword >> (i*counter_bits)) & 0xFFF) << " ";
+            }
         }
-
         break;
     case INFO_HEADER_SOF:
         //! This is iSOF (N*1) = N
-        ss << std::hex << "iSOF " << std::hex << pixelword << "\t";
+        ss << chip << " iSOF " << std::hex << pixelword << "\t";
         break;
         //[[fallthrough]];
     case INFO_HEADER_MID: {
         //! This is iMID (N*6) = 6*N
         int low = (pixelword & 0xFFFFFFFF);
-        ss << std::hex << "iMID " << std::hex << pixelword << "\t" << low;
+        ss << chip << " iMID " << std::hex << pixelword << "\t" << low;
         break;
         //[[fallthrough]];
     }
@@ -722,7 +730,7 @@ void hexdumpAndParsePacket(uint64_t* pixel_packet, int counter_bits)
         //!
         //! TODO Read OMR from the packets
 
-        ss << std::hex << "iEOF " << std::hex << pixelword << "\n";
+        ss << chip << " iEOF " << std::hex << pixelword << "\n";
 
         char *p = (char *) pixel_packet;
         if( type == INFO_HEADER_SOF )
@@ -745,13 +753,13 @@ void hexdumpAndParsePacket(uint64_t* pixel_packet, int counter_bits)
                 isCounterhFrame = true;
             else
                 isCounterhFrame = false;
-            ss << "iEOF isCounterHFrame = " << isCounterhFrame << "\n";
+            ss << chip << " iEOF isCounterHFrame = " << isCounterhFrame;
         }
 
         break;
     }
     default:
-        ss << std::hex << pixelword << " ";
+        ss << std::dec << chip << std::hex << pixelword << " ";
         break;
     }
 

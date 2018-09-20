@@ -63,9 +63,9 @@ const int trig_length_us = 500;   //! [us]
 const int trig_deadtime_us = 500; //! [us]
 int trig_freq_mhz = 0; //! Set this depending on readoutMode_sequential later
 
-const uint64_t nr_of_triggers = 1;
-const int continuousRW_frequency = 2000;                        // Hz?
-int timeout = (trig_length_us + trig_deadtime_us) / 1000; // ms?
+const uint64_t nr_of_triggers = 10000;
+const int continuousRW_frequency = 2000; //! [Hz]
+int timeout = (trig_length_us + trig_deadtime_us) / 1000; //! [ms]
 const bool readoutMode_sequential = false;
 
 int infoIndex = 0;
@@ -75,7 +75,7 @@ bool isCounterhFrame = false;
 uint64_t packets = 0, frames = 0;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
-const int packets_per_frame = ceil(106560. / 9000.);
+const int packets_per_frame = ceil(106560. / double(max_packet_size));
 /* Packets per frame = number of bytes without network headers (106560) for
     one frame (one chip) for that acquisition (typically 1/4 of the final
     image), divided by the MTU (9000 bytes).
@@ -107,6 +107,6 @@ void doEndOfRunTests(int number_of_chips, uint64_t pMID, uint64_t pSOR, uint64_t
 void stopTrigger();
 void cleanup(bool print = true);
 
-void hexdumpAndParsePacket(uint64_t *pixel_packet, int counter_bits);
+void hexdumpAndParsePacket(uint64_t *pixel_packet, int counter_bits, bool skip_data_packets, int chip);
 
 #endif // RECEIVEUDPTHREAD_H
