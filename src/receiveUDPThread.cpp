@@ -317,7 +317,7 @@ int set_cpu_affinity()
 
   CPU_ZERO(&set);                                      /* Clears set, so that it
                                                           contains no CPUs */
-  CPU_SET(4, &set);                                    /* Add CPU cpu to set */
+  CPU_SET(0, &set);                                    /* Add CPU cpu to set */
   //CPU_CLR(1, &set);                               /* Remove CPU cpu from set */
   ret = sched_setaffinity(0, sizeof(cpu_set_t), &set); /* Set affinity of this
                                                           process to the defined
