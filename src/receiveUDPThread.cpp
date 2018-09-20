@@ -1,6 +1,8 @@
 #include "receiveUDPThread.h"
 
 #include <iomanip> // For pretty column printing --> std::setw()
+#include <chrono>
+#include <thread>
 
 using time_point = std::chrono::steady_clock::time_point;
 using steady_clock = std::chrono::steady_clock;
@@ -54,6 +56,8 @@ int main() {
   time_point begin = steady_clock::now();
 
   startTrigger();
+  std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
+
   printDebuggingOutput(packets, packets_per_frame, number_of_chips, calculateNumberOfFrames(packets, number_of_chips, packets_per_frame), begin);
 
   do {
