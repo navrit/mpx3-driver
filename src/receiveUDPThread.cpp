@@ -214,7 +214,7 @@ int main() {
 
         finished = true; //! Poll loop exit condition
       } else {
-        //printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
+        printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
       }
     } else if (ret == -1) {
       //! An error occurred, never actually seen this triggered
