@@ -4,3 +4,4 @@ SpidrController and SpidrDaq are used to trigger readout as usual.
 
 The idea is to just replace receiverThread, receiverThreadC, framebuilderThread and framebuilderThreadC and keep the interface to Dexter the exact same unless really necessary...
 
+build --> cd src/; qmake && make -j12 && make clean && ./receiveUDPThread
