@@ -15,13 +15,13 @@ int main() {
   set_cpu_affinity();
   print_affinity();
   if (set_scheduler() != 0) {
-      return false;
+      return 1;
   }
   if (!initSpidrController(socketIPAddr, TCPPort)) {
-      return false;
+      return 1;
   }
   if (!connectToDetector()) {
-      return false;
+      return 1;
   }
   initSocket(); //! No arguments --> listens on all IP addresses
                 //! Arguments --> IP address as const char *
@@ -35,7 +35,7 @@ int main() {
 
   bool finished = false;
   int ret = 1;
-  int received_size = 0;
+  long received_size = 0;
   uint64_t *pixel_packet;
   uint64_t type;
   int sizeofuint64_t = sizeof(uint64_t);
@@ -48,19 +48,19 @@ int main() {
   uint64_t row_counter = 0;
 
   int tmp = 0;
-  char *p = nullptr;
   char byt;
 
   uint64_t pSOR = 0, pEOR = 0, pSOF = 0, pEOF = 0, pMID = 0, iSOF = 0, iMID = 0, iEOF = 0, def = 0;
 
   startTrigger();
-  std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
+  std::this_thread::sleep_for(std::chrono::microseconds(timeout));
+  const int timeout_ms = int(timeout/1E3);
 
   time_point begin = steady_clock::now();
   printDebuggingOutput(packets, packets_per_frame, number_of_chips, calculateNumberOfFrames(packets, number_of_chips, packets_per_frame), begin);
 
   do {
-    ret = poll(fds, number_of_chips, timeout);
+    ret = poll(fds, number_of_chips, timeout_ms);
 
     // Success
     if (ret > 0) {
@@ -163,15 +163,14 @@ int main() {
               case INFO_HEADER_EOF:
                   ++iEOF;
 
-                  //! Track and extract the OMR
-                  p = (char *) pixel_packet;
                   //! TODO Come back to this logic, HOW DOES THIS EVER GET TRIGGERED?!
                   if (type == INFO_HEADER_SOF) {
                       infoIndex = 0;
                   }
                   if (infoIndex <= MPX_PIXEL_COLUMNS / 8 - 4) {
-                      for (int i = 0; i < 4; ++i, ++infoIndex)
-                          infoHeader[infoIndex] = p[i];
+                      for (int i = 0; i < 4; ++i, ++infoIndex) {
+                          infoHeader[infoIndex] = char((*pixel_packet >> (i*8)) & 0xFF); // Same as infoHeader[infoIndex] = p[i] where p = (char *) pixel_packet;
+                      }
                   }
                   if (type == INFO_HEADER_EOF) {
                       // Format and interpret:
@@ -184,7 +183,7 @@ int main() {
                       byt = ((byt & 0xF0) >> 4) | ((byt & 0x0F) << 4); // efghabcd
                       byt = ((byt & 0xCC) >> 2) | ((byt & 0x33) << 2); // ghefcdab
                       byt = ((byt & 0xAA) >> 1) | ((byt & 0x55) << 1); // hgfedcba
-                      if ((byt & 0x7) == 0x4) {                         // 'Read CounterH'
+                      if ((byt & 0x7) == 0x4) {                        // 'Read CounterH'
                           isCounterhFrame = true;
                       } else {
                           isCounterhFrame = false;
@@ -209,7 +208,7 @@ int main() {
 
       if (frames == nr_of_triggers) {
         //! This can never be triggered when it should if the emulator is running and not pinned
-        //! to a different physical CPU core that this process.
+        //! to a different physical CPU core than this process.
 
         printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
         printEndOfRunInformation(frames, packets, begin, nr_of_triggers, trig_length_us, trig_deadtime_us);
@@ -221,7 +220,7 @@ int main() {
       }
     } else if (ret == -1) {
       //! An error occurred, never actually seen this triggered
-      return false;
+      return 1;
     }
   } while (!finished);
 
@@ -315,8 +314,8 @@ int set_cpu_affinity()
 {
   cpu_set_t set;                             /* Define your cpu_set
                                                 bit mask. */
-  int ret, i;
-  int nproc = sysconf(_SC_NPROCESSORS_ONLN); // Get the number of logical CPUs.
+  int ret;
+  long nproc = sysconf(_SC_NPROCESSORS_ONLN); // Get the number of logical CPUs.
 
   CPU_ZERO(&set);                                      /* Clears set, so that it
                                                           contains no CPUs */
@@ -331,11 +330,11 @@ int set_cpu_affinity()
     return -1;
   }
 
-  for (i = 0; i < nproc; i++) {
+  for (long i = 0; i < nproc; i++) {
     int cpu;
 
     cpu = CPU_ISSET(i, &set);
-    printf("cpu=%i is %s\n", i, cpu ? "set" : "unset");
+    printf("cpu=%ld is %s\n", i, cpu ? "set" : "unset");
   }
 
   std::cout << "\n";
@@ -383,7 +382,7 @@ unsigned int inet_addr(char *str)
     int a, b, c, d;
     char arr[4];
     sscanf(str, "%d.%d.%d.%d", &a, &b, &c, &d);
-    arr[0] = a; arr[1] = b; arr[2] = c; arr[3] = d;
+    arr[0] = char(a); arr[1] = char(b); arr[2] = char(c); arr[3] = char(d);
     return *(unsigned int *)arr;
 }
 
@@ -516,11 +515,11 @@ bool startTrigger(bool print)
         std::cout << "\n[START]\n";
     }
     if (readoutMode_sequential) {
-      timeout = (trig_length_us + trig_deadtime_us) / 1000.; //! [ms]
+      timeout = trig_length_us + trig_deadtime_us; //! [us]
       spidrcontrol->startAutoTrigger();
     } else {
-      timeout = double(1/continuousRW_frequency);
-      trig_freq_mhz = continuousRW_frequency*1E3;
+      timeout = int(1E6/continuousRW_frequency);
+      trig_freq_mhz = int(continuousRW_frequency*1E3);
       printf("trig_freq_mhz = %d, continuousRW_frequency = %d\n", trig_freq_mhz, continuousRW_frequency);
       //spidrcontrol->setSpidrReg(0x800A0298, ((1/continuousRW_frequency)/(7.8125E-9))); //! 3.0.2 Trigger Frequency Register
       //! This may have crashed my SPIDR...
@@ -532,7 +531,7 @@ bool startTrigger(bool print)
 
 uint64_t calculateNumberOfFrames(uint64_t packets, int number_of_chips, int packets_per_frame)
 {
-    return (packets / number_of_chips / packets_per_frame);
+    return uint64_t(packets / uint64_t(number_of_chips) / uint64_t(packets_per_frame));
 }
 
 void printDebuggingOutput(uint64_t packets, int packets_per_frame, int number_of_chips, uint64_t frames, time_point begin)
@@ -544,7 +543,7 @@ void printDebuggingOutput(uint64_t packets, int packets_per_frame, int number_of
 
     if (nr_of_triggers/number_of_prints == 0) {
         return;
-    } else if ((packets % (packets_per_frame * number_of_chips) == 0) &&
+    } else if ((packets % uint64_t(packets_per_frame * number_of_chips) == 0) &&
         (frames % (nr_of_triggers / number_of_prints) == 0)) {
       time_point end = steady_clock::now();
       auto t = std::chrono::duration_cast<us>(end - begin).count();
@@ -737,12 +736,11 @@ void hexdumpAndParsePacket(uint64_t* pixel_packet, int counter_bits, bool skip_d
 
         ss << chip << " iEOF " << std::hex << pixelword << "\n";
 
-        char *p = (char *) pixel_packet;
         if( type == INFO_HEADER_SOF )
             infoIndex = 0;
         if( infoIndex <= 256/8-4 )
             for( int i=0; i<4; ++i, ++infoIndex )
-                infoHeader[infoIndex] = p[i];
+                infoHeader[infoIndex] = char((*pixel_packet >> (i*8)) & 0xFF); // Same as infoHeader[infoIndex] = p[i] where p = (char *) pixel_packet;
         if( type == INFO_HEADER_EOF ) {
             // Format and interpret:
             // e.g. OMR has to be mirrored per byte;

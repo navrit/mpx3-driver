@@ -48,9 +48,9 @@ const int TCPPort = 50000;
 const std::string socketIPAddr = "192.168.100.10";
 //const std::string socketIPAddr = "192.168.1.10";
 
-SpidrController *spidrcontrol = nullptr;
-struct sockaddr_in listen_address; // My address
-struct pollfd fds[number_of_chips];
+static SpidrController *spidrcontrol = nullptr;
+static struct sockaddr_in listen_address; // My address
+static struct pollfd fds[number_of_chips];
 
 const int max_packet_size = 9000;
 const int max_buffer_size =
@@ -61,18 +61,18 @@ const int portno = 8192;
 const int trig_mode = 4;          //! Auto-trigger mode
 const int trig_length_us = 250;   //! [us]
 const int trig_deadtime_us = 250; //! [us]
-int trig_freq_mhz = 0; //! Set this depending on readoutMode_sequential later
+static int trig_freq_mhz = 0; //! Set this depending on readoutMode_sequential later
 
 const uint64_t nr_of_triggers = 10000;
 const int continuousRW_frequency = 2000; //! [Hz]
-int timeout = 0; //! Set this depending on readoutMode_sequential later
+static int timeout = 0; //! Set this depending on readoutMode_sequential later
 const bool readoutMode_sequential = false;
 
-int infoIndex = 0;
-char infoHeader[MPX_PIXEL_COLUMNS/8]; //! Single info header (Contains an OMR)
-bool isCounterhFrame = false;
+static int infoIndex = 0;
+static char infoHeader[MPX_PIXEL_COLUMNS/8]; //! Single info header (Contains an OMR)
+static bool isCounterhFrame = false;
 
-uint64_t packets = 0, frames = 0;
+static uint64_t packets = 0, frames = 0;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 const int packets_per_frame = ceil(106560. / double(max_packet_size));
