@@ -13,3 +13,8 @@
 cd src/
 qmake && make -j12 && make clean && ./receiveUDPThread
 ```
+
+## Dependencies
+* Mostly standard Linux/Unix
+* Qt (tested with 5.10 and 5.11, any recent version should work)
+* Clang++ (can change this to g++ in the .pro file)
