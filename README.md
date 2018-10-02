@@ -3,6 +3,7 @@
 ## Description
 * This Receiver UDP Thread binds to ports 8192-8195 on a specified address (ANY by default) and receive packets from the UDP streams from the SPIDR/emulator.
 * SpidrController and SpidrDaq are used to trigger readout as usual.
+* As of 02/10/18, this is reading in packets, parsing them by their packet types (pSOF, pSOR, pEOR, pEOF, iSOR etc.) and putting them in a buffer. Next step is to integrate frame buffering and a framebuilder thread.
 
 ## Aim
 * The idea is to just replace the existing driver classes that handle receiving the UDP packets and framebuilding - receiverThread, receiverThreadC, framebuilderThread and framebuilderThread.
