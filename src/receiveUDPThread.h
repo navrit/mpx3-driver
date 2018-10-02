@@ -13,6 +13,8 @@
 #include <QVector>
 
 #include "colors.h" // Just for pretty terminal colour printing
+#include "spdlog/spdlog.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 #include "SpidrController.h"
 
@@ -83,6 +85,9 @@ const int packets_per_frame = ceil(106560. / double(max_packet_size));
     the link is lossy which it isn't obviously...*/
 #pragma GCC diagnostic pop
 
+const auto console = spdlog::stdout_color_mt("console");
+static uint64_t last_frame_number = 0;
+
 int set_scheduler();
 int print_affinity();
 int set_cpu_affinity();
@@ -94,18 +99,17 @@ bool initSocket(const char *inetIPAddr = "");
 void printReadoutMode();
 bool initDetector();
 bool initFileDescriptorsAndBindToPorts();
-bool startTrigger(bool print = true);
+bool startTrigger();
 uint64_t calculateNumberOfFrames(uint64_t packets, int number_of_chips,
                                  int packets_per_frame);
-void printDebuggingOutput(uint64_t packets, int packets_per_frame,
-                          int number_of_chips, uint64_t frames,
+void printDebuggingOutput(uint64_t packets, uint64_t frames,
                           time_point begin);
 void printEndOfRunInformation(uint64_t frames, uint64_t packets,
                               time_point begin, int triggers,
                               int trig_length_us, int trig_deadtime_us);
 void doEndOfRunTests(int number_of_chips, uint64_t pMID, uint64_t pSOR, uint64_t pEOR, uint64_t pSOF, uint64_t pEOF, uint64_t iMID, uint64_t iSOF, uint64_t iEOF, uint64_t def);
 void stopTrigger();
-void cleanup(bool print = true);
+void cleanup();
 
 void hexdumpAndParsePacket(uint64_t *pixel_packet, int counter_bits, bool skip_data_packets, int chip);
 

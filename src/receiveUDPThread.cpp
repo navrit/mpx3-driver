@@ -57,7 +57,7 @@ int main() {
   const int timeout_ms = int(timeout/1E3);
 
   time_point begin = steady_clock::now();
-  printDebuggingOutput(packets, packets_per_frame, number_of_chips, calculateNumberOfFrames(packets, number_of_chips, packets_per_frame), begin);
+  printDebuggingOutput(packets, calculateNumberOfFrames(packets, number_of_chips, packets_per_frame), begin);
 
   do {
     ret = poll(fds, number_of_chips, timeout_ms);
@@ -210,13 +210,13 @@ int main() {
         //! This can never be triggered when it should if the emulator is running and not pinned
         //! to a different physical CPU core than this process.
 
-        printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
+        printDebuggingOutput(packets, frames, begin);
         printEndOfRunInformation(frames, packets, begin, nr_of_triggers, trig_length_us, trig_deadtime_us);
         doEndOfRunTests(number_of_chips, pMID, pSOR, pEOR, pSOF, pEOF, iMID, iSOF, iEOF, def);
 
         finished = true; //! Poll loop exit condition
       } else {
-        printDebuggingOutput(packets, packets_per_frame, number_of_chips, frames, begin);
+        printDebuggingOutput(packets, frames, begin);
       }
     } else if (ret == -1) {
       //! An error occurred, never actually seen this triggered
@@ -225,121 +225,115 @@ int main() {
   } while (!finished);
 
   stopTrigger();
-  cleanup(true);
+  cleanup();
   return 0;
 }
 
 int set_scheduler() {
-  int policy;
-  struct sched_param sp = { .sched_priority = 99 };
-  struct timespec    tp;
-  int ret;
+    int policy;
+    struct sched_param sp = { .sched_priority = 99 };
+    struct timespec    tp;
+    int ret;
 
-  ret = sched_setscheduler(0, SCHED_FIFO, &sp);
+    ret = sched_setscheduler(0, SCHED_FIFO, &sp);
 
-  if (ret == -1) {
-    perror("sched_setscheduler");
-    return 1;
-  }
+    if (ret == -1) {
+        console->error("Sched_setscheduler, ret = {}", ret);
+        return 1;
+    }
 
-  policy = sched_getscheduler(0);
+    policy = sched_getscheduler(0);
 
-  switch (policy) {
-  case SCHED_OTHER:
-    printf("policy is normal\n");
-    break;
+    switch (policy) {
+    case SCHED_OTHER:
+        console->info("Policy is normal");
+        break;
 
-  case SCHED_RR:
-    printf("policy is round-robin\n");
-    break;
+    case SCHED_RR:
+        console->info("Policy is round-robin");
+        break;
 
-  case SCHED_FIFO:
-    printf("policy is first-in, first-out\n");
-    break;
+    case SCHED_FIFO:
+        console->info("Policy is first-in, first-out");
+        break;
 
-  case -1:
-    perror("sched_getscheduler");
-    break;
+    case -1:
+        console->error("Sched_getscheduler");
+        break;
 
-  default:
-    fprintf(stderr, "Unknown policy!\n");
-  }
+    default:
+        console->error("Unknown policy!");
+    }
 
-  ret = sched_getparam(0, &sp);
+    ret = sched_getparam(0, &sp);
 
-  if (ret == -1) {
-    perror("sched_getparam");
-    return 1;
-  }
+    if (ret == -1) {
+        console->error("Sched_getparam, ret = {}", ret);
+        return 1;
+    }
 
-  printf("Our priority is %d\n", sp.sched_priority);
+    console->info("Our priority is {}", sp.sched_priority);
 
-  ret = sched_rr_get_interval(0, &tp);
+    ret = sched_rr_get_interval(0, &tp);
 
-  if (ret == -1) {
-    perror("sched_rr_get_interval");
-    return 1;
-  }
+    if (ret == -1) {
+        console->error("Sched_rr_get_interval, ret = {}", ret);
+        return 1;
+    }
 
-  printf("Our time quantum is %.2lf milliseconds\n",
-         (tp.tv_sec * 1000.0f) + (tp.tv_nsec / 1000000.0f));
+    console->info("Our time quantum is {} milliseconds", (tp.tv_sec * 1000.0f) + (tp.tv_nsec / 1000000.0f));
 
-  std::cout << "\n\n";
-
-  return 0;
+    return 0;
 }
 
 int print_affinity() {
   cpu_set_t mask;
   long nproc, i;
 
-  if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) == -1) {
-    perror("sched_getaffinity");
+  int ret = sched_getaffinity(0, sizeof(cpu_set_t), &mask);
+
+  if (ret == -1) {
+    console->error("Sched_getaffinity, ret = {}", ret);
     return 1;
   } else {
     nproc = sysconf(_SC_NPROCESSORS_ONLN); // Get the number of logical CPUs.
-    printf("sched_getaffinity = ");
 
     for (i = 0; i < nproc; i++) {
-      printf("%d ", CPU_ISSET(i, &mask));
+      console->info("Sched_getaffinity --> Core {} = {}", i, CPU_ISSET(i, &mask));
     }
-    printf("\n");
   }
-  std::cout << "\n\n";
   return 0;
 }
 
 // ! http://man7.org/linux/man-pages/man3/CPU_SET.3.html
 int set_cpu_affinity()
 {
-  cpu_set_t set;                             /* Define your cpu_set
+    cpu_set_t set;                             /* Define your cpu_set
                                                 bit mask. */
-  int ret;
-  long nproc = sysconf(_SC_NPROCESSORS_ONLN); // Get the number of logical CPUs.
+    int ret;
+    long nproc = sysconf(_SC_NPROCESSORS_ONLN); // Get the number of logical CPUs.
 
-  CPU_ZERO(&set);                                      /* Clears set, so that it
+    CPU_ZERO(&set);                                      /* Clears set, so that it
                                                           contains no CPUs */
-  CPU_SET(0, &set);                                    /* Add CPU cpu to set */
-  //CPU_CLR(1, &set);                               /* Remove CPU cpu from set */
-  ret = sched_setaffinity(0, sizeof(cpu_set_t), &set); /* Set affinity of this
+    CPU_SET(0, &set);                                    /* Add CPU cpu to set */
+    //CPU_CLR(1, &set);                               /* Remove CPU cpu from set */
+    ret = sched_setaffinity(0, sizeof(cpu_set_t), &set); /* Set affinity of this
                                                           process to the defined
                                                           mask, i.e. only N */
 
-  if (ret == -1) {
-    perror("sched_setaffinity");
-    return -1;
-  }
+    if (ret == -1) {
+        console->error("Sched_setaffinity");
+        return -1;
+    }
 
-  for (long i = 0; i < nproc; i++) {
-    int cpu;
+    for (long i = 0; i < nproc; i++) {
+        int cpu;
 
-    cpu = CPU_ISSET(i, &set);
-    printf("cpu=%ld is %s\n", i, cpu ? "set" : "unset");
-  }
+        cpu = CPU_ISSET(i, &set);
+        console->info("cpu {} is {}", i, (cpu ? "SET" : "unset"));
+    }
 
-  std::cout << "\n";
-
-  return 0;
+    return 0;
 }
 
 bool initSpidrController(std::string IPAddr, int port)
@@ -350,7 +344,7 @@ bool initSpidrController(std::string IPAddr, int port)
     if (spidrcontrol != nullptr) {
         return true;
     } else {
-        std::cout << BOLD(FRED("Could not make SpidrController, start the emulator or connect a SPIDR.\n"));
+        console->error("Could not make SpidrController, start the emulator or connect a SPIDR.\n");
         return false;
     }
 }
@@ -359,21 +353,16 @@ bool connectToDetector()
 {
     // Are we connected ?
     if (!spidrcontrol->isConnected()) {
-      std::cout << BOLD(FRED("SpidrController :(\t"
-                             << spidrcontrol->ipAddressString()
-                             << ": "
-                             << spidrcontrol->connectionStateString()
-                             << ", "
-                             << spidrcontrol->connectionErrString()
-                             << "\n"));
-      return false;
+        console->error("SpidrController :(\t{}: {}, {}",
+                       spidrcontrol->ipAddressString(),
+                       spidrcontrol->connectionStateString(),
+                       spidrcontrol->connectionErrString());
+                return false;
     } else {
-      std::cout << BOLD(FGRN("SpidrController :)\t"));
-      std::cout << spidrcontrol->ipAddressString()
-                << "\t"
-                << spidrcontrol->connectionStateString()
-                << "\n";
-      return true;
+        console->info("SpidrController :)\t{}\t{}",
+                      spidrcontrol->ipAddressString(),
+                      spidrcontrol->connectionStateString());
+        return true;
     }
 }
 
@@ -395,10 +384,10 @@ bool initSocket(const char * inetIPAddr)
     listen_address.sin_family = AF_INET;
     if (strcmp(inetIPAddr, "")) {
         listen_address.sin_addr.s_addr = inet_addr(inetIPAddr);
-        std::cout << "\nListening on " << inetIPAddr << "\n";
+        console->info("Listening on {}", inetIPAddr);
     } else {
         listen_address.sin_addr.s_addr = htonl(INADDR_ANY); //! Address to accept any incoming messages
-        std:: cout << "\nListening on ANY ADDRESS\n";
+        console->info("Listening on ANY ADDRESS");
         //! Eg. inet_addr("127.0.0.1");
     }
     std::memset(fds, 0, sizeof(fds));
@@ -408,9 +397,9 @@ bool initSocket(const char * inetIPAddr)
 void printReadoutMode()
 {
     if (readoutMode_sequential) {
-      std::cout << BOLD("\nSequential R/W readout mode\n");
+      console->info("Sequential R/W readout mode");
     } else {
-      std::cout << BOLD("\nContinuous R/W readout mode\n");
+      console->info("Continuous R/W readout mode");
     }
 }
 
@@ -474,11 +463,11 @@ bool initDetector()
                                           trig_length_us,
                                           trig_freq_mhz,
                                           nr_of_triggers);
-    std::cout << "\nTrigger data:" <<
-      "\n\ttrig_mode = " << trig_mode << " " <<
-      "\n\ttrig_length_us = " << trig_length_us << " " <<
-      "\n\ttrig_freq_mhz = " << trig_freq_mhz << " " <<
-      "\n\tnr_of_triggers = " << nr_of_triggers << "\n\n";
+    console->info("Trigger data:");
+    console->info("\ttrig_mode = {}", trig_mode);
+    console->info("\ttrig_length_us = {}", trig_length_us);
+    console->info("\ttrig_freq_mhz = {}", trig_freq_mhz);
+    console->info("\tnr_of_triggers ={}", nr_of_triggers);
 
     return true;
 }
@@ -490,10 +479,8 @@ bool initFileDescriptorsAndBindToPorts()
       fds[i].events = POLLIN;
 
       if (fds[i].fd < 0) {
-        std::cout << BOLD(FRED("Could not create socket"));
+        console->error("Could not create socket");
         return false;
-      } else {
-        std::cout << FGRN("Socket created: ") << i << "\t";
       }
 
       listen_address.sin_port = htons(portno + i);
@@ -501,26 +488,25 @@ bool initFileDescriptorsAndBindToPorts()
       if (bind(fds[i].fd,
                (struct sockaddr *)&listen_address,
                (socklen_t)sizeof(listen_address)) < 0) {
-        std::cout << BOLD(FRED("Could not bind"));
+        console->error("Could not bind, port =", portno + i);
         return false;
       }
-      std::cout << FGRN("Bound port:\t") << portno + i << "\n";
+      console->info("Socket created: {}\tBound port: {}", i, portno + i);
     }
     return true;
 }
 
-bool startTrigger(bool print)
+bool startTrigger()
 {
-    if (print) {
-        std::cout << "\n[START]\n";
-    }
+    console->info("\t[START]");
+
     if (readoutMode_sequential) {
       timeout = trig_length_us + trig_deadtime_us; //! [us]
       spidrcontrol->startAutoTrigger();
     } else {
       timeout = int(1E6/continuousRW_frequency);
       trig_freq_mhz = int(continuousRW_frequency*1E3);
-      printf("trig_freq_mhz = %d, continuousRW_frequency = %d\n", trig_freq_mhz, continuousRW_frequency);
+      console->info("trig_freq_mhz = {}, continuousRW_frequency = {}", trig_freq_mhz, continuousRW_frequency);
       //spidrcontrol->setSpidrReg(0x800A0298, ((1/continuousRW_frequency)/(7.8125E-9))); //! 3.0.2 Trigger Frequency Register
       //! This may have crashed my SPIDR...
       spidrcontrol->startContReadout(continuousRW_frequency);
@@ -534,31 +520,29 @@ uint64_t calculateNumberOfFrames(uint64_t packets, int number_of_chips, int pack
     return uint64_t(packets / uint64_t(number_of_chips) / uint64_t(packets_per_frame));
 }
 
-void printDebuggingOutput(uint64_t packets, int packets_per_frame, int number_of_chips, uint64_t frames, time_point begin)
+void printDebuggingOutput(uint64_t packets, uint64_t frames, time_point begin)
 {
     // Some debugging output during a run
     // Print every 2%
 
     uint number_of_prints = 50;
 
-    if (nr_of_triggers/number_of_prints == 0) {
-        return;
-    } else if ((packets % uint64_t(packets_per_frame * number_of_chips) == 0) &&
-        (frames % (nr_of_triggers / number_of_prints) == 0)) {
+    if ((frames % (nr_of_triggers / number_of_prints) == 0) && (frames != last_frame_number)) {
+      last_frame_number = frames;
       time_point end = steady_clock::now();
       auto t = std::chrono::duration_cast<us>(end - begin).count();
-      printf("%9lu/%-9lu\t%-.0f%%\t%lus\t%lu packets\n", frames, nr_of_triggers,
-             float(frames * 100. / nr_of_triggers), t / 1000000, packets);
+
+      console->info("{:>10}/{:<10} {:>4}%  {:>.1f}s {:>10} pkts", frames, nr_of_triggers, float(frames * 100. / nr_of_triggers), t / 1E6, packets);
     }
+    return;
 }
 
 void printEndOfRunInformation(uint64_t frames, uint64_t packets, time_point begin, int nr_of_triggers, int trig_length_us, int trig_deadtime_us)
 {
-    printf("\nFrames processed = %lu\n", frames);
+    console->info("Frames processed = {}", frames);
     steady_clock::time_point end = steady_clock::now();
     auto t = std::chrono::duration_cast<ns>(end - begin).count();
-    printf("Time to process frames = %.6e μs = %f s\n", t / 1E3, t /
-           1E9);
+    console->info("Time to process frames = {} μs = {} s", t / 1E3, t / 1E9);
     float time_per_frame      = float(t) / nr_of_triggers / 1E6;
     float processing_overhead = -1;
     if (readoutMode_sequential) {
@@ -569,10 +553,9 @@ void printEndOfRunInformation(uint64_t frames, uint64_t packets, time_point begi
         //std::cout << "\nt = " << t << " triggers = " << nr_of_triggers << " cont_freq = " << continuousRW_frequency << " _ " << (double(t) / 1E3 / double(nr_of_triggers)) << " _ " << (1E6 * (1/double(continuousRW_frequency))) << "\n";
         processing_overhead = 1E3 * ((double(t) / 1E3 / double(nr_of_triggers)) - (1E6 * (1/double(continuousRW_frequency))));
     }
-    printf("Time per frame = %.5f ms \nProcessing overhead = %.1f ns\n",
-           time_per_frame,
-           processing_overhead);
-    printf("Packets received = %lu\t\n", packets);
+    console->info("Time per frame = {} ms", time_per_frame );
+    console->info("Processing overhead = {} ns", processing_overhead);
+    console->info("Packets received = {}", packets);
 }
 
 void stopTrigger()
@@ -584,53 +567,51 @@ void stopTrigger()
     }
 }
 
-void cleanup(bool print)
+void cleanup()
 {
     delete spidrcontrol;
-    if (print) {
-        printf("\n[END]\n");
-    }
+    console->info("[END]");
 }
 
 void doEndOfRunTests(int number_of_chips, uint64_t pMID, uint64_t pSOR, uint64_t pEOR, uint64_t pSOF, uint64_t pEOF, uint64_t iMID, uint64_t iSOF, uint64_t iEOF, uint64_t def)
 {
-    std::cout << "\nPer chip packet statistics and tests:\n----------------------------------------------------------------\n";
-    int w = 12;
-    std::cout << std::setw(w) << "pMID" << std::setw(w) << "pSOR" << std::setw(w) << "pEOR" << std::setw(w) << "pSOF" << std::setw(w) << "pEOF" << "\n";
-    std::cout << std::setw(w) << pMID/number_of_chips << std::setw(w) << pSOR/number_of_chips << std::setw(w) << pEOR/number_of_chips << std::setw(w) << pSOF/number_of_chips << std::setw(w)  << pEOF/number_of_chips <<  "\n\n";
+    console->info("Per chip packet statistics and tests:");
+    console->info("----------------------------------------------------------------");
+    console->info("{:<12} {:<12} {:<12} {:<12} {:<12}", "pMID", "pSOR", "pEOR", "pSOF", "pEOF");
+    console->info("{:<12} {:<12} {:<12} {:<12} {:<12}", pMID/number_of_chips, pSOR/number_of_chips, pEOR/number_of_chips, pSOF/number_of_chips, pEOF/number_of_chips);
 
-    std::cout << std::setw(w) << "iSOF" << std::setw(w) << "iMID" << std::setw(w) << "iEOF" << std::setw(w) << "Def." << "\n";
-    std::cout << std::setw(w) << iSOF/number_of_chips << std::setw(w) << iMID/number_of_chips << std::setw(w) << iEOF/number_of_chips << std::setw(w) << def/number_of_chips << "\n\n";
+    console->info("{:<12} {:<12} {:<12} {:<12}", "iSOF", "iMID", "iEOF", "Def.");
+    console->info("{:<12} {:<12} {:<12} {:<12}", iSOF/number_of_chips, iMID/number_of_chips, iEOF/number_of_chips, def/number_of_chips);
 
     if (pSOR != pEOR) {
-        printf("[TEST] [FAIL]\tpSOR != pEOR; %lu != %lu\n", pSOR, pEOR);
+        console->warn("[TEST] [FAIL]\tpSOR != pEOR; {} != {}", pSOR, pEOR);
     } else {
-//        printf("[TEST] [PASS]\tpSOR == pEOR\n");
+        console->info("[TEST] [PASS]\tpSOR == pEOR");
     }
     if (pSOF != pEOF) {
-        printf("[TEST] [FAIL]\tpSOF != pEOF; %lu != %lu\n", pSOF, pEOF);
+        console->warn("[TEST] [FAIL]\tpSOF != pEOF; {} != {}", pSOF, pEOF);
     } else {
-//        printf("[TEST] [PASS]\tpSOF == pEOF\n");
+        console->info("[TEST] [PASS]\tpSOF == pEOF");
     }
     if (iEOF - iMID - iSOF != 0) {
-        printf("[TEST] [FAIL]\tiEOF - iMID - iSOF != 0; %lu - %lu - %lu == %lu\n", iEOF, iMID, iSOF, (iEOF - iMID - iSOF));
+        console->warn("[TEST] [FAIL]\tiEOF - iMID - iSOF != 0; {} - {} - {} == {}", iEOF, iMID, iSOF, (iEOF - iMID - iSOF));
     } else {
-//        printf("[TEST] [PASS]\tiEOF - iMID - iSOF == 0\n");
+        console->info("[TEST] [PASS]\tiEOF - iMID - iSOF == 0");
     }
     if (iMID%7 != 0) {
-        printf("[TEST] [FAIL]\t iMID%%7 != 0; %lu %% 7 != 0\n", iMID);
+        printf("[TEST] [FAIL]\t iMID%%7 != 0; {} %% 7 != 0", iMID);
     } else {
-//        printf("[TEST] [PASS]\t \n");
+        console->info("[TEST] [PASS] \t iMID%7 == 0");
     }
     if (pSOF/number_of_chips != nr_of_triggers || pEOF/number_of_chips != nr_of_triggers || iSOF/number_of_chips != nr_of_triggers || iEOF/number_of_chips/8 != nr_of_triggers) {
-        printf("[TEST] [FAIL]\tnr_of_triggers*number_of_chips != pSOF, pEOF, iSOF, iEOF; %lu != %lu, %lu, %lu or %lu\n", nr_of_triggers, pSOF/number_of_chips, pEOF/number_of_chips, iSOF/number_of_chips, iEOF/number_of_chips/8);
+        console->warn("[TEST] [FAIL]\tnr_of_triggers*number_of_chips != pSOF, pEOF, iSOF, iEOF; {} != {}, {}, {} or {}", nr_of_triggers, pSOF/number_of_chips, pEOF/number_of_chips, iSOF/number_of_chips, iEOF/number_of_chips/8);
     } else {
-//        printf("[TEST] [PASS]\tnr_of_triggers == pSOF/number_of_chips,\n\t\t\t\tpEOF/number_of_chips,\n\t\t\t\tiSOF/number_of_chips,\n\t\t\t\tiEOF/number_of_chips\n");
+//        console->info("[TEST] [PASS]\tnr_of_triggers == pSOF/number_of_chips,\n\t\t\t\tpEOF/number_of_chips,\n\t\t\t\tiSOF/number_of_chips,\n\t\t\t\tiEOF/number_of_chips");
     }
     if (def != 0) {
-        printf("[TEST] [FAIL]\tdef != 0; def == %lu\n", def);
+        console->warn("[TEST] [FAIL]\tdef != 0; def == {}", def);
     } else {
-//        printf("[TEST] [PASS]\tdef == 0\n");
+//        console->info("[TEST] [PASS]\tdef == 0");
     }
 }
 

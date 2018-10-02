@@ -55,6 +55,7 @@ HEADERS += receiveUDPThread.h \
            ReceiverThreadC.h \
            FramebuilderThread.h \
            FramebuilderThreadC.h \
-           colors.h
+           colors.h \
+        spdlog/*
 
 CONFIG += static
