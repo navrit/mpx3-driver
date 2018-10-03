@@ -14,6 +14,7 @@
 cd src/
 qmake && make -j12 && make clean && ./receiveUDPThread
 ```
+This is friendly with QtCreator of course, no weird configurations are required
 
 ## Dependencies
 * Mostly standard Linux/Unix
