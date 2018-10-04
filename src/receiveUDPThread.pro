@@ -1,5 +1,5 @@
 TEMPLATE = app
-TARGET = receiveUDPThread
+TARGET = TestMpx3Driver
 
 QT -= gui
 QT += network concurrent
@@ -10,17 +10,17 @@ CONFIG(release, debug|release) {
 }
 
 message("Using clang and clang++")
-QMAKE_CC              = gcc
+QMAKE_CC              = clang
 QMAKE_LINK_C          = $$QMAKE_CC
 QMAKE_LINK_C_SHLIB    = $$QMAKE_CC
 
-QMAKE_CXX             = g++
+QMAKE_CXX             = clang++
 QMAKE_LINK            = $$QMAKE_CXX
 QMAKE_LINK_SHLIB      = $$QMAKE_CXX
 
 message("Explicitly enabling AVX2 instructions")
-QMAKE_CFLAGS          *= -mavx2
-QMAKE_CXXFLAGS        *= -mavx2
+QMAKE_CFLAGS          += -mavx2
+QMAKE_CXXFLAGS        += -mavx2
 
 message("Passing high optimisation flags to the linker")
 QMAKE_LFLAGS_RELEASE  -= -Wl,-O1
@@ -36,7 +36,8 @@ equals(QMAKE_CXX, g++) {
     CONFIG *= c++1z
 }
 
-SOURCES += receiveUDPThread.cpp \
+SOURCES += TestDriver.cpp \
+           receiveUDPThread.cpp \
            SpidrController.cpp \
            SpidrDaq.cpp \
            ReceiverThread.cpp \
@@ -44,7 +45,8 @@ SOURCES += receiveUDPThread.cpp \
            FramebuilderThread.cpp \
            FramebuilderThreadC.cpp
 
-HEADERS += receiveUDPThread.h \
+HEADERS += TestDriver.h \
+           receiveUDPThread.h \
            SpidrController.h \
            SpidrDaq.h \
            mpx3defs.h \
@@ -54,8 +56,6 @@ HEADERS += receiveUDPThread.h \
            ReceiverThread.h \
            ReceiverThreadC.h \
            FramebuilderThread.h \
-           FramebuilderThreadC.h \
-           colors.h \
-        spdlog/*
+           FramebuilderThreadC.h
 
 CONFIG += static
