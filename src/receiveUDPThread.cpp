@@ -30,9 +30,9 @@ int receiveUDPThread::run() {
 
   time_point begin = steady_clock::now();
 
-  PacketContainer inputQueues[number_of_chips];
-  FrameAssembler *frameAssembler[number_of_chips];
-  for (int i = 0; i < number_of_chips; ++i) {
+  PacketContainer inputQueues[config.number_of_chips];
+  FrameAssembler *frameAssembler[config.number_of_chips];
+  for (int i = 0; i < config.number_of_chips; ++i) {
     frameAssembler[i] = new FrameAssembler(i);
   }
 
@@ -41,11 +41,10 @@ int receiveUDPThread::run() {
 
   printDebuggingOutput(
       packets,
-      calculateNumberOfFrames(packets, number_of_chips, packets_per_frame),
-      begin, nr_of_triggers);
+      calculateNumberOfFrames(packets, config.number_of_chips, packets_per_frame),
+      begin, config.nr_of_triggers);
 
-  int timeout_ms = int((timeout_us / 1000.) + 0.5);
-  spdlog::get("console")->debug("Poll timeout = {} us = {} ms", timeout_us, timeout_ms );
+  spdlog::get("console")->debug("Poll timeout = {} us", timeout_us);
 
   timespec time;
   time.tv_sec = 0;
@@ -55,12 +54,12 @@ int receiveUDPThread::run() {
     //std::this_thread::sleep_for(
     //    us(10)); //! For spinlock shit that wasn't here before
 
-    ret = ppoll(fds, number_of_chips, &time, nullptr);
+    ret = ppoll(fds, config.number_of_chips, &time, nullptr);
 
     // Success
     if (ret > 0) {
       // An event on one of the fds has occurred.
-      for (int i = 0; i < number_of_chips; ++i) {
+      for (int i = 0; i < config.number_of_chips; ++i) {
         if (fds[i].revents & POLLIN) {
           /* This consists of 12 (packets_per_frame) packets (MTU = 9000 bytes).
    First 11 are 9000 bytes, the last one is 7560 bytes.
@@ -87,16 +86,16 @@ int receiveUDPThread::run() {
       }
 
       frames =
-          calculateNumberOfFrames(packets, number_of_chips, packets_per_frame);
+          calculateNumberOfFrames(packets, config.number_of_chips, packets_per_frame);
 
-      if (frames == nr_of_triggers) {
+      if (frames == config.nr_of_triggers) {
         //! This can never be triggered when it should if the emulator is
         //! running and not pinned to a different physical CPU core than this
         //! process.
 
         uint64_t pSOR = 0, pEOR = 0, pSOF = 0, pEOF = 0, pMID = 0, iSOF = 0,
                  iMID = 0, iEOF = 0, def = 0;
-        for (int i = 0; i < number_of_chips; ++i) {
+        for (int i = 0; i < config.number_of_chips; ++i) {
           pSOR += frameAssembler[i]->pSOR;
           pEOR += frameAssembler[i]->pEOR;
           pSOF += frameAssembler[i]->pSOF;
@@ -108,16 +107,16 @@ int receiveUDPThread::run() {
           def += frameAssembler[i]->def;
         }
 
-        printDebuggingOutput(packets, frames, begin, nr_of_triggers);
-        printEndOfRunInformation(frames, packets, begin, nr_of_triggers,
-                                 trig_length_us, trig_deadtime_us,
-                                 readoutMode_sequential);
-        doEndOfRunTests(number_of_chips, pMID, pSOR, pEOR, pSOF, pEOF, iMID,
+        printDebuggingOutput(packets, frames, begin, config.nr_of_triggers);
+        printEndOfRunInformation(frames, packets, begin, config.nr_of_triggers,
+                                 config.trig_length_us, config.trig_deadtime_us,
+                                 config.readoutMode_sequential);
+        doEndOfRunTests(config.number_of_chips, pMID, pSOR, pEOR, pSOF, pEOF, iMID,
                         iSOF, iEOF, def);
 
         finished = true; //! Poll loop exit condition
       } else {
-        printDebuggingOutput(packets, frames, begin, nr_of_triggers);
+        printDebuggingOutput(packets, frames, begin, config.nr_of_triggers);
       }
     } else if (ret == -1) {
       //! An error occurred, never actually seen this triggered
@@ -269,7 +268,7 @@ bool receiveUDPThread::initSocket(const char *inetIPAddr) {
 }
 
 bool receiveUDPThread::initFileDescriptorsAndBindToPorts(int UDP_Port) {
-  for (int i = 0; i < number_of_chips; i++) {
+  for (int i = 0; i < config.number_of_chips; i++) {
     fds[i].fd = socket(AF_INET, SOCK_DGRAM, 0);
     fds[i].events = POLLIN;
 
@@ -342,7 +341,7 @@ void receiveUDPThread::printEndOfRunInformation(
     // double(nr_of_triggers)) << " _ " << (1E6 *
     // (1/double(continuousRW_frequency))) << "\n";
     processing_overhead = 1E3 * ((double(t) / 1E3 / double(nr_of_triggers)) -
-                                 (1E6 * (1 / double(continuousRW_frequency))));
+                                 (1E6 * (1 / double(config.continuousRW_frequency))));
   }
   spdlog::get("console")->info("Time per frame = {} ms", time_per_frame);
   if (processing_overhead > int(1E6)) {
@@ -401,14 +400,14 @@ void receiveUDPThread::doEndOfRunTests(int number_of_chips, uint64_t pMID,
   } else {
     spdlog::get("console")->debug("[PASS] \t iMID%7 == 0");
   }
-  if (pSOF / number_of_chips != nr_of_triggers ||
-      pEOF / number_of_chips != nr_of_triggers ||
-      iSOF / number_of_chips != nr_of_triggers ||
-      iEOF / number_of_chips / 8 != nr_of_triggers) {
+  if (pSOF / number_of_chips != config.nr_of_triggers ||
+      pEOF / number_of_chips != config.nr_of_triggers ||
+      iSOF / number_of_chips != config.nr_of_triggers ||
+      iEOF / number_of_chips / 8 != config.nr_of_triggers) {
     spdlog::get("console")->warn(
         "[FAIL]\tnr_of_triggers*number_of_chips != pSOF, pEOF, iSOF, iEOF; {} "
         "!= {}, {}, {} or {}",
-        nr_of_triggers, pSOF / number_of_chips, pEOF / number_of_chips,
+        config.nr_of_triggers, pSOF / number_of_chips, pEOF / number_of_chips,
         iSOF / number_of_chips, iEOF / number_of_chips / 8);
   } else {
     // spdlog::get("console")->debug("[PASS]\tnr_of_triggers ==

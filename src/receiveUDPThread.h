@@ -14,6 +14,8 @@
 
 #include "spdlog/spdlog.h"
 
+#include "configs.h"
+
 using time_point = std::chrono::steady_clock::time_point;
 using steady_clock = std::chrono::steady_clock;
 
@@ -82,5 +84,11 @@ private:
   int timeout_us;
 
   bool finished = false;
+
+  Config config;
+  NetworkSettings networkSettings;
+
+  struct sockaddr_in listen_address; // My address
+  struct pollfd fds[Config::number_of_chips];
 };
 #endif // RECEIVEUDPTHREAD_H

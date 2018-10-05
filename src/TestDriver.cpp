@@ -8,9 +8,9 @@ void testDriver::run() {
   console = spdlog::stdout_color_mt("console");
   spdlog::get("console")->set_level(spdlog::level::debug);
 
-  initSpidrController(socketIPAddr, TCPPort);
+  initSpidrController(networkSettings.socketIPAddr, networkSettings.TCPPort);
   connectToDetector();
-  stopTrigger(readoutMode_sequential); //! It is possible that someone didn't
+  stopTrigger(config.readoutMode_sequential); //! It is possible that someone didn't
                                        //! stop the trigger from a previous run
   initDetector();
 
@@ -19,15 +19,15 @@ void testDriver::run() {
       new receiveUDPThread(); //! Same perfomance if it's on the stack or the
                               //! heap
   updateTimeout_us();
-  receiveUDPthread->setPollTimeout(timeout_us); //! [microseconds]
+  receiveUDPthread->setPollTimeout(config.timeout_us); //! [microseconds]
 
   //! Initialise and run receiveUDPThread if init succeeds
-  if (receiveUDPthread->initThread("", portno) == true) {
+  if (receiveUDPthread->initThread("", networkSettings.portno) == true) {
     startTrigger();
     receiveUDPthread->run();
   }
 
-  stopTrigger(readoutMode_sequential);
+  stopTrigger(config.readoutMode_sequential);
   cleanup();
   return;
 }
@@ -70,24 +70,24 @@ void testDriver::printReadoutMode(bool readoutMode_sequential) {
 }
 
 bool testDriver::initDetector() {
-  printReadoutMode(readoutMode_sequential);
+  printReadoutMode(config.readoutMode_sequential);
 
-  if (readoutMode_sequential) {
+  if (config.readoutMode_sequential) {
     spidrcontrol->stopAutoTrigger();
 
-    for (int i = 0; i < number_of_chips; i++) {
+    for (int i = 0; i < config.number_of_chips; i++) {
       spidrcontrol->setContRdWr(i, false);
     }
   } else {
     spidrcontrol->stopContReadout();
 
-    for (int i = 0; i < number_of_chips; i++) {
+    for (int i = 0; i < config.number_of_chips; i++) {
       spidrcontrol->setContRdWr(i, true);
     }
   }
 
   // Initialise SPIDR acquisition - trigger, number of links etc.
-  for (int i = 0; i < number_of_chips; i++) {
+  for (int i = 0; i < config.number_of_chips; i++) {
     spidrcontrol->setPs(i, 3);
     spidrcontrol->setEqThreshH(i, false);
     spidrcontrol->setInternalTestPulse(i, true);
@@ -114,43 +114,43 @@ bool testDriver::initDetector() {
   spidrcontrol->setBiasSupplyEna(true);
   spidrcontrol->setBiasVoltage(100);
 
-  if (readoutMode_sequential) {
-    trig_freq_mhz =
-        int(1E3 * (1. / (double((trig_length_us + trig_deadtime_us)) / 1E6)));
+  if (config.readoutMode_sequential) {
+    config.trig_freq_mhz =
+        int(1E3 * (1. / (double((config.trig_length_us + config.trig_deadtime_us)) / 1E6)));
   } else {
-    trig_freq_mhz = int(1E3 * (1. / (1.0 * (double(trig_length_us / 1E6)))));
+    config.trig_freq_mhz = int(1E3 * (1. / (1.0 * (double(config.trig_length_us / 1E6)))));
   }
-  spidrcontrol->setShutterTriggerConfig(trig_mode, trig_length_us,
-                                        trig_freq_mhz, nr_of_triggers);
+  spidrcontrol->setShutterTriggerConfig(config.trig_mode, config.trig_length_us,
+                                        config.trig_freq_mhz, config.nr_of_triggers);
   spdlog::get("console")->info("Trigger data:");
-  spdlog::get("console")->info("\ttrig_mode = {}", trig_mode);
-  spdlog::get("console")->info("\ttrig_length_us = {}", trig_length_us);
-  spdlog::get("console")->info("\ttrig_freq_mHz = {}", trig_freq_mhz);
-  spdlog::get("console")->info("\tnr_of_triggers ={}", nr_of_triggers);
+  spdlog::get("console")->info("\ttrig_mode = {}", config.trig_mode);
+  spdlog::get("console")->info("\ttrig_length_us = {}", config.trig_length_us);
+  spdlog::get("console")->info("\ttrig_freq_mHz = {}", config.trig_freq_mhz);
+  spdlog::get("console")->info("\tnr_of_triggers ={}", config.nr_of_triggers);
 
   return true;
 }
 
 void testDriver::updateTimeout_us() {
-  if (readoutMode_sequential) {
-    timeout_us = trig_length_us + trig_deadtime_us; //! [us]
+  if (config.readoutMode_sequential) {
+    config.timeout_us = config.trig_length_us + config.trig_deadtime_us; //! [us]
   } else {
-    timeout_us = int(1E6 / continuousRW_frequency);
+    config.timeout_us = int(1E6 / config.continuousRW_frequency);
   }
-  spdlog::get("console")->info("Updated timeout to {} ms", timeout_us / 1000.);
+  spdlog::get("console")->info("Updated timeout to {} ms", config.timeout_us / 1000.);
 }
 
 bool testDriver::startTrigger() {
   spdlog::get("console")->info("[START]");
 
-  if (readoutMode_sequential) {
+  if (config.readoutMode_sequential) {
     spidrcontrol->startAutoTrigger();
   } else {
-    trig_freq_mhz = int(continuousRW_frequency * 1E3);
+    config.trig_freq_mhz = int(config.continuousRW_frequency * 1E3);
     spdlog::get("console")->info(
-        "trig_freq_mhz = {}, continuousRW_frequency = {}", trig_freq_mhz,
-        continuousRW_frequency);
-    spidrcontrol->startContReadout(continuousRW_frequency);
+        "trig_freq_mhz = {}, continuousRW_frequency = {}", config.trig_freq_mhz,
+        config.continuousRW_frequency);
+    spidrcontrol->startContReadout(config.continuousRW_frequency);
   }
 
   return true;
