@@ -18,8 +18,8 @@ void testDriver::run() {
   receiveUDPThread *receiveUDPthread =
       new receiveUDPThread(); //! Same perfomance if it's on the stack or the
                               //! heap
-  updateTimeout();
-  receiveUDPthread->setPollTimeout(timeout * 1.1);
+  updateTimeout_us();
+  receiveUDPthread->setPollTimeout(timeout_us); //! [microseconds]
 
   //! Initialise and run receiveUDPThread if init succeeds
   if (receiveUDPthread->initThread("", portno) == true) {
