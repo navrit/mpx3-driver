@@ -1,6 +1,8 @@
 #ifndef FRAMEASSEMBLER_H
 #define FRAMEASSEMBLER_H
+
 #include "receiveUDPThread.h"
+#include "packetcontainer.h"
 #include <stdint.h>
 
 //! See Table 54 (MPX3 Packet Format) - SPIDR Register Map
@@ -27,7 +29,7 @@ const static int MPX_PIXEL_COLUMNS = 256;
 class FrameAssembler {
 public:
   FrameAssembler(int chipIndex);
-  void onEvent(receiveUDPThread::PacketContainer &pc);
+  void onEvent(PacketContainer &pc);
 
   int infoIndex = 0;
   char infoHeader[MPX_PIXEL_COLUMNS/8]; //! Single info header (Contains an OMR)

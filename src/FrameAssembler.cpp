@@ -1,11 +1,12 @@
 #include "FrameAssembler.h"
+#include "receiveUDPThread.h"
 #include <iomanip> // For pretty column printing --> std::setw()
 
 FrameAssembler::FrameAssembler(int chipIndex) {
     this->chipIndex = chipIndex;
 }
 
-void FrameAssembler::onEvent(receiveUDPThread::PacketContainer &pc) {
+void FrameAssembler::onEvent(PacketContainer &pc) {
   if (pc.chipIndex != chipIndex) {
     return;
   }

@@ -59,6 +59,7 @@ HEADERS += TestDriver.h \
            FramebuilderThread.h \
            FramebuilderThreadC.h \
            FrameAssembler.h \
-           configs.h
+           configs.h \
+    packetcontainer.h
 
 CONFIG += static

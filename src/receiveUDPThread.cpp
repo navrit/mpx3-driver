@@ -21,6 +21,10 @@ bool receiveUDPThread::initThread(const char *ipaddr, int UDP_Port) {
                 //! Arguments --> IP address as const char *
   initFileDescriptorsAndBindToPorts(UDP_Port);
 
+  for (int i = 0; i < config.number_of_chips; ++i) {
+    frameAssembler[i] = new FrameAssembler(i);
+  }
+
   return true;
 }
 
@@ -29,12 +33,6 @@ int receiveUDPThread::run() {
   spdlog::get("console")->debug("Run started");
 
   time_point begin = steady_clock::now();
-
-  PacketContainer inputQueues[config.number_of_chips];
-  FrameAssembler *frameAssembler[config.number_of_chips];
-  for (int i = 0; i < config.number_of_chips; ++i) {
-    frameAssembler[i] = new FrameAssembler(i);
-  }
 
   int ret = 1;
   //int tmp = 0;

@@ -6,14 +6,16 @@
 #include <iostream>
 #include <math.h> /* ceil */
 #include <netinet/in.h>
-#include <stdio.h>
 #include <poll.h>
 #include <signal.h>
+#include <stdio.h>
 #include <thread>
 #include <unistd.h>
 
 #include "spdlog/spdlog.h"
 
+#include "FrameAssembler.h"
+#include "packetcontainer.h"
 #include "configs.h"
 
 using time_point = std::chrono::steady_clock::time_point;
@@ -21,6 +23,8 @@ using steady_clock = std::chrono::steady_clock;
 
 using us = std::chrono::microseconds;
 using ns = std::chrono::nanoseconds;
+
+class FrameAssembler;
 
 class receiveUDPThread : std::thread {
 
@@ -39,16 +43,10 @@ public:
   bool isFinished() { return finished; }
 
   constexpr static int max_packet_size = 9000;
-  //constexpr static int max_buffer_size =
+  // constexpr static int max_buffer_size =
   //    (11 * max_packet_size) +
   //    7560; //! [bytes] You can check this on Wireshark,
   //          //! by triggering 1 frame readout
-
-  typedef struct {
-      int chipIndex;
-      long size;
-      char data[max_packet_size];
-  } PacketContainer;
 
   uint64_t packets = 0, frames = 0;
 
@@ -90,5 +88,8 @@ private:
 
   struct sockaddr_in listen_address; // My address
   struct pollfd fds[Config::number_of_chips];
+
+  PacketContainer inputQueues[Config::number_of_chips];
+  FrameAssembler *frameAssembler[Config::number_of_chips];
 };
 #endif // RECEIVEUDPTHREAD_H
