@@ -12,7 +12,13 @@
 #include <thread>
 #include <unistd.h>
 
-#include "TestDriver.h"
+#include "spdlog/spdlog.h"
+
+using time_point = std::chrono::steady_clock::time_point;
+using steady_clock = std::chrono::steady_clock;
+
+using us = std::chrono::microseconds;
+using ns = std::chrono::nanoseconds;
 
 class receiveUDPThread : std::thread {
 
@@ -29,9 +35,6 @@ public:
   void setPollTimeout(int timeout) { timeout_us = timeout; }
 
   bool isFinished() { return finished; }
-
-  struct sockaddr_in listen_address; // My address
-  struct pollfd fds[number_of_chips];
 
   constexpr static int max_packet_size = 9000;
   //constexpr static int max_buffer_size =

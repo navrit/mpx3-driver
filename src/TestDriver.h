@@ -10,9 +10,6 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
-using time_point = std::chrono::steady_clock::time_point;
-using steady_clock = std::chrono::steady_clock;
-
 using us = std::chrono::microseconds;
 using ns = std::chrono::nanoseconds;
 

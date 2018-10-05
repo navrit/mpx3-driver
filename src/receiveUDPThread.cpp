@@ -4,12 +4,6 @@
 #include <chrono>
 #include <errno.h>
 
-using time_point = std::chrono::steady_clock::time_point;
-using steady_clock = std::chrono::steady_clock;
-
-using us = std::chrono::microseconds;
-using ns = std::chrono::nanoseconds;
-
 receiveUDPThread::receiveUDPThread() {}
 
 receiveUDPThread::~receiveUDPThread() {
@@ -43,7 +37,7 @@ int receiveUDPThread::run() {
   }
 
   int ret = 1;
-  int tmp = 0;
+  //int tmp = 0;
 
   printDebuggingOutput(
       packets,
