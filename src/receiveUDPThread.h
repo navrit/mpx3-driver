@@ -7,7 +7,8 @@
 #include <math.h> /* ceil */
 #include <netinet/in.h>
 #include <stdio.h>
-#include <sys/poll.h>
+#include <poll.h>
+#include <signal.h>
 #include <thread>
 #include <unistd.h>
 
@@ -40,7 +41,7 @@ public:
 
   typedef struct {
       int chipIndex;
-      int size;
+      long size;
       char data[max_packet_size];
   } PacketContainer;
 

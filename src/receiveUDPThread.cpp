@@ -53,11 +53,15 @@ int receiveUDPThread::run() {
   int timeout_ms = int((timeout_us / 1000.) + 0.5);
   spdlog::get("console")->debug("Poll timeout = {} us = {} ms", timeout_us, timeout_ms );
 
+  timespec time;
+  time.tv_sec = 0;
+  time.tv_nsec = timeout_us * 1000;
+
   do {
     //std::this_thread::sleep_for(
     //    us(10)); //! For spinlock shit that wasn't here before
 
-    ret = poll(fds, number_of_chips, timeout_ms);
+    ret = ppoll(fds, number_of_chips, &time, nullptr);
 
     // Success
     if (ret > 0) {
