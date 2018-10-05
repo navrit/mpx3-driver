@@ -78,7 +78,7 @@ int receiveUDPThread::run() {
 
           // std::cout << std::dec << "Index: " << tmp << "\t Chip ID: " << i <<
           // "\t Received size: " << received_size << "\n";
-          ++tmp;
+          //++tmp;
 
           //! This shouldn't happen but Henk has this check in his code
           //! Maybe it's a good idea to keep it
