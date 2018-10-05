@@ -131,13 +131,13 @@ bool testDriver::initDetector() {
   return true;
 }
 
-void testDriver::updateTimeout() {
+void testDriver::updateTimeout_us() {
   if (readoutMode_sequential) {
-    timeout = trig_length_us + trig_deadtime_us; //! [us]
+    timeout_us = trig_length_us + trig_deadtime_us; //! [us]
   } else {
-    timeout = int(1E6 / continuousRW_frequency);
+    timeout_us = int(1E6 / continuousRW_frequency);
   }
-  spdlog::get("console")->info("Updated timeout to {} ms", timeout / 1000.);
+  spdlog::get("console")->info("Updated timeout to {} ms", timeout_us / 1000.);
 }
 
 bool testDriver::startTrigger() {

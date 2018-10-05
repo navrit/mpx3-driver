@@ -25,7 +25,7 @@ public:
   int print_affinity();
   int set_cpu_affinity();
 
-  void setPollTimeout(int timeout) { timeout_ms = int(timeout / 1E3); }
+  void setPollTimeout(int timeout) { timeout_us = timeout; }
 
   bool isFinished() { return finished; }
 
@@ -75,7 +75,7 @@ private:
                        uint64_t iMID, uint64_t iSOF, uint64_t iEOF,
                        uint64_t def);
 
-  int timeout_ms;
+  int timeout_us;
 
   bool finished = false;
 };

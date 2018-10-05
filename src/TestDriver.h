@@ -46,8 +46,9 @@ public:
 
   //! ------------- Trigger etc. ---------------------
   int trig_freq_mhz = 0; //! Set this depending on readoutMode_sequential later
-                         //! Yes, this really is millihertz
-  int timeout;           //! Set this depending on readoutMode_sequential later
+                         //! Yes, this really is [millihertz]
+  int timeout_us;        //! [microseconds]
+                         //! Set this depending on readoutMode_sequential later
   //! ------------------------------------------------
 
   int set_scheduler();
@@ -59,7 +60,7 @@ private:
   bool connectToDetector();
   bool initDetector();
   void printReadoutMode(bool readoutMode_sequential);
-  void updateTimeout();
+  void updateTimeout_us();
   bool startTrigger();
   void stopTrigger(bool readoutMode_sequential);
   void cleanup();
