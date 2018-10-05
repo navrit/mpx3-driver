@@ -33,17 +33,18 @@ public:
   struct pollfd fds[number_of_chips];
 
   constexpr static int max_packet_size = 9000;
-  constexpr static int max_buffer_size =
-      (11 * max_packet_size) +
-      7560; //! [bytes] You can check this on Wireshark,
-            //! by triggering 1 frame readout
+  //constexpr static int max_buffer_size =
+  //    (11 * max_packet_size) +
+  //    7560; //! [bytes] You can check this on Wireshark,
+  //          //! by triggering 1 frame readout
+
+  typedef struct {
+      int chipIndex;
+      int size;
+      char data[max_packet_size];
+  } PacketContainer;
 
   uint64_t packets = 0, frames = 0;
-
-  int infoIndex = 0;
-  char infoHeader[MPX_PIXEL_COLUMNS /
-                  8]; //! Single info header (Contains an OMR)
-  bool isCounterhFrame = false;
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
@@ -73,9 +74,6 @@ private:
                        uint64_t pEOR, uint64_t pSOF, uint64_t pEOF,
                        uint64_t iMID, uint64_t iSOF, uint64_t iEOF,
                        uint64_t def);
-
-  void hexdumpAndParsePacket(uint64_t *pixel_packet, int counter_bits,
-                             bool skip_data_packets, int chip);
 
   int timeout_ms;
 

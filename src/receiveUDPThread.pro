@@ -43,7 +43,8 @@ SOURCES += TestDriver.cpp \
            ReceiverThread.cpp \
            ReceiverThreadC.cpp \
            FramebuilderThread.cpp \
-           FramebuilderThreadC.cpp
+           FramebuilderThreadC.cpp \
+           FrameAssembler.cpp
 
 HEADERS += TestDriver.h \
            receiveUDPThread.h \
@@ -56,6 +57,7 @@ HEADERS += TestDriver.h \
            ReceiverThread.h \
            ReceiverThreadC.h \
            FramebuilderThread.h \
-           FramebuilderThreadC.h
+           FramebuilderThreadC.h \
+           FrameAssembler.h
 
 CONFIG += static
