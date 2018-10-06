@@ -48,22 +48,32 @@ int receiveUDPThread::run() {
   time.tv_sec = 0;
   time.tv_nsec = timeout_us * 1000;
 
+  struct epoll_event events[1024];
+
   do {
     //std::this_thread::sleep_for(
     //    us(10)); //! For spinlock shit that wasn't here before
 
-    ret = ppoll(fds, config.number_of_chips, &time, nullptr);
+    do
+       ret = epoll_wait(epfd, events, 1024, 10);
+    while (ret == -1 && errno == EINTR);
 
     // Success
     if (ret > 0) {
       // An event on one of the fds has occurred.
-      for (int i = 0; i < config.number_of_chips; ++i) {
-        if (fds[i].revents & POLLIN) {
+      for (int j = 0; j < ret; j++) {
+          int etype = events[j].events;
+          if (! (etype & EPOLLIN)) {
+            continue;
+          }
+
+          peer_t *peer = (peer_t*) events[j].data.ptr;
+          int i = peer->chipIndex;
           /* This consists of 12 (packets_per_frame) packets (MTU = 9000 bytes).
-   First 11 are 9000 bytes, the last one is 7560 bytes.
-   Assuming no packet loss, extra fragmentation or MTU changing size*/
+             First 11 are 9000 bytes, the last one is 7560 bytes.
+             Assuming no packet loss, extra fragmentation or MTU changing size*/
           long received_size =
-              recv(fds[i].fd, inputQueues[i].data, max_packet_size, 0);
+              recv(peer->fd, inputQueues[i].data, max_packet_size, 0);
           inputQueues[i].chipIndex = i;
           inputQueues[i].size = received_size;
 
@@ -80,7 +90,6 @@ int receiveUDPThread::run() {
           ++packets;
 
           frameAssembler[i]->onEvent(inputQueues[i]);
-        }
       }
 
       frames =
@@ -261,23 +270,27 @@ bool receiveUDPThread::initSocket(const char *inetIPAddr) {
     spdlog::get("console")->info("Listening on ANY ADDRESS");
     //! Eg. inet_addr("127.0.0.1");
   }
-  std::memset(fds, 0, sizeof(fds));
+  std::memset(peers, 0, sizeof(peers));
   return true;
 }
 
 bool receiveUDPThread::initFileDescriptorsAndBindToPorts(int UDP_Port) {
-  for (int i = 0; i < config.number_of_chips; i++) {
-    fds[i].fd = socket(AF_INET, SOCK_DGRAM, 0);
-    fds[i].events = POLLIN;
+  if ((epfd = epoll_create1(EPOLL_CLOEXEC)) == -1) {
+     perror("make_epoll_fd");
+     exit(1);
+  }
 
-    if (fds[i].fd < 0) {
+  for (int i = 0; i < config.number_of_chips; i++) {
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    if (fd < 0) {
       spdlog::get("console")->error("Could not create socket");
       return false;
     }
 
     listen_address.sin_port = htons(UDP_Port + i);
 
-    int ret = bind(fds[i].fd, (struct sockaddr *)&listen_address,
+    int ret = bind(fd, (struct sockaddr *)&listen_address,
                    socklen_t(sizeof(listen_address)));
 
     if (ret < 0) {
@@ -288,6 +301,12 @@ bool receiveUDPThread::initFileDescriptorsAndBindToPorts(int UDP_Port) {
     }
     spdlog::get("console")->info("Socket created: {}\tBound port: {}", i,
                                  UDP_Port + i);
+    peers[i].fd = fd;
+    peers[i].chipIndex = i;
+    struct epoll_event ee = { .data.ptr = &peers[i], .events = EPOLLIN };
+    if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ee)) {
+        perror("epoll_ctl");
+    }
   }
   return true;
 }

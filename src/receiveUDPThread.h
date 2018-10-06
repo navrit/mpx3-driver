@@ -6,7 +6,7 @@
 #include <iostream>
 #include <math.h> /* ceil */
 #include <netinet/in.h>
-#include <poll.h>
+#include <sys/epoll.h>
 #include <signal.h>
 #include <stdio.h>
 #include <thread>
@@ -25,6 +25,11 @@ using us = std::chrono::microseconds;
 using ns = std::chrono::nanoseconds;
 
 class FrameAssembler;
+
+struct peer_t {
+    int fd;
+    int chipIndex;
+};
 
 class receiveUDPThread : std::thread {
 
@@ -87,7 +92,8 @@ private:
   NetworkSettings networkSettings;
 
   struct sockaddr_in listen_address; // My address
-  struct pollfd fds[Config::number_of_chips];
+  int epfd = -1;
+  peer_t peers[Config::number_of_chips];
 
   PacketContainer inputQueues[Config::number_of_chips];
   FrameAssembler *frameAssembler[Config::number_of_chips];
