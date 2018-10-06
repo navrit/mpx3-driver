@@ -18,9 +18,9 @@ QMAKE_CXX             = clang++
 QMAKE_LINK            = $$QMAKE_CXX
 QMAKE_LINK_SHLIB      = $$QMAKE_CXX
 
-message("Explicitly enabling AVX2 instructions")
-QMAKE_CFLAGS          *= -mavx2
-QMAKE_CXXFLAGS        *= -mavx2 -Wfatal-errors
+#message("Explicitly enabling AVX2 instructions")
+#QMAKE_CFLAGS          *= -mavx2
+#QMAKE_CXXFLAGS        *= -mavx2 -Wfatal-errors
 
 message("Passing high optimisation flags to the linker")
 QMAKE_LFLAGS_RELEASE  -= -Wl,-O1
@@ -60,6 +60,7 @@ HEADERS += TestDriver.h \
            FramebuilderThreadC.h \
            FrameAssembler.h \
            configs.h \
-    packetcontainer.h
+    packetcontainer.h \
+    OMR.h
 
 CONFIG += static

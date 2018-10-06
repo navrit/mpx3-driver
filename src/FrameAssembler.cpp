@@ -16,7 +16,8 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
   int rownr_EOR = -1, rownr_SOR = -1;
   int sizeofuint64_t = sizeof(uint64_t);
   for (int j = 0; j < pc.size / sizeofuint64_t; ++j, ++pixel_packet) {
-    uint64_t type = (*pixel_packet) & PKT_TYPE_MASK;
+    uint64_t pixelword = *pixel_packet;
+    uint64_t type = pixelword & PKT_TYPE_MASK;
     /*if (i == 0) {
         hexdumpAndParsePacket(pixel_packet, counter_depth, true, i);
     }*/
@@ -70,42 +71,29 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
     case INFO_HEADER_SOF:
       //! This is really iSOF (N*1) + iMID (N*6) + iEOF (N*1) = 8*N
       ++iSOF;
-      [[fallthrough]];
+      infoIndex = 0; break;
     case INFO_HEADER_MID:
       //! This is really iMID (N*6) + iEOF (N*1) = 7*N
       ++iMID;
-      [[fallthrough]];
+      if (infoIndex == 4)
+        chipId = (int) (pixelword & 0xffffffff);
+      else if (infoIndex == 5 && chipId != 0) {
+        omr.setHighR(pixelword & 0xffff);
+      }
+      infoIndex++; break;
     case INFO_HEADER_EOF:
       ++iEOF;
-      //! TODO Come back to this logic, HOW DOES THIS EVER GET TRIGGERED?!
-      if (type == INFO_HEADER_SOF) {
-        infoIndex = 0;
+      omr.setLowR(pixelword & 0xffffffff);
+      switch (omr.getCountL()) {
+        case 0: counter_depth = 1; break;
+        case 1: counter_depth = 6; break;
+        case 2: counter_depth = 12; break;
+        case 3: counter_depth = 24; break;
       }
-      if (infoIndex <= MPX_PIXEL_COLUMNS / 8 - 4) {
-        for (int i = 0; i < 4; ++i, ++infoIndex) {
-          infoHeader[infoIndex] =
-              char((*pixel_packet >> (i * 8)) &
-                   0xFF); // Same as infoHeader[infoIndex] = p[i] where p =
-                          // (char *) pixel_packet;
-        }
-      }
-      if (type == INFO_HEADER_EOF) {
-        // Format and interpret:
-        // e.g. OMR has to be mirrored per byte;
-        // in order to distinguish CounterL from CounterH readout
-        // it's sufficient to look at the last byte, containing
-        // the three operation mode bits
-        uint8_t byt = infoHeader[infoIndex - 1];
-        // Mirroring of byte with bits 'abcdefgh':
-        byt = ((byt & 0xF0) >> 4) | ((byt & 0x0F) << 4); // efghabcd
-        byt = ((byt & 0xCC) >> 2) | ((byt & 0x33) << 2); // ghefcdab
-        byt = ((byt & 0xAA) >> 1) | ((byt & 0x55) << 1); // hgfedcba
-        if ((byt & 0x7) == 0x4) {                        // 'Read CounterH'
-          isCounterhFrame = true;
-        } else {
-          isCounterhFrame = false;
-        }
-      }
+      counter_bits = counter_depth == 24 ? 12 : counter_depth;
+      pixels_per_word = 60 / counter_bits;
+      pixel_mask = (1 << counter_bits) - 1;
+      isCounterhFrame = omr.getMode() == 1;
       break;
     default:
       // Rubbish packets - skip these

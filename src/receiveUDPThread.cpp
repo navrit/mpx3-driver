@@ -386,27 +386,27 @@ void receiveUDPThread::doEndOfRunTests(int number_of_chips, uint64_t pMID,
   } else {
     spdlog::get("console")->debug("[PASS]\tpSOF == pEOF");
   }
-  if (iEOF - iMID - iSOF != 0) {
+  if (iEOF - iSOF != 0) {
     spdlog::get("console")->warn(
-        "[FAIL]\tiEOF - iMID - iSOF != 0; {} - {} - {} == {}", iEOF, iMID, iSOF,
-        (iEOF - iMID - iSOF));
+        "[FAIL]\tiEOF - iSOF != 0; {} - {} == {}", iEOF, iSOF,
+        (iEOF - iSOF));
   } else {
-    spdlog::get("console")->debug("[PASS]\tiEOF - iMID - iSOF == 0");
+    spdlog::get("console")->debug("[PASS]\tiEOF - iSOF == 0");
   }
-  if (iMID % 7 != 0) {
-    spdlog::get("console")->warn("[FAIL]\t iMID%%7 != 0; {} %% 7 != 0", iMID);
+  if (iMID % 6 != 0) {
+    spdlog::get("console")->warn("[FAIL]\t iMID%%6 != 0; {} %% 6 != 0", iMID);
   } else {
-    spdlog::get("console")->debug("[PASS] \t iMID%7 == 0");
+    spdlog::get("console")->debug("[PASS] \t iMID%6 == 0");
   }
   if (pSOF / number_of_chips != config.nr_of_triggers ||
       pEOF / number_of_chips != config.nr_of_triggers ||
       iSOF / number_of_chips != config.nr_of_triggers ||
-      iEOF / number_of_chips / 8 != config.nr_of_triggers) {
+      iEOF / number_of_chips != config.nr_of_triggers) {
     spdlog::get("console")->warn(
         "[FAIL]\tnr_of_triggers*number_of_chips != pSOF, pEOF, iSOF, iEOF; {} "
         "!= {}, {}, {} or {}",
         config.nr_of_triggers, pSOF / number_of_chips, pEOF / number_of_chips,
-        iSOF / number_of_chips, iEOF / number_of_chips / 8);
+        iSOF / number_of_chips, iEOF / number_of_chips);
   } else {
     // spdlog::get("console")->debug("[PASS]\tnr_of_triggers ==
     // pSOF/number_of_chips,\n\t\t\t\tpEOF/number_of_chips,\n\t\t\t\tiSOF/number_of_chips,\n\t\t\t\tiEOF/number_of_chips");

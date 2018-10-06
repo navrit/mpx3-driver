@@ -1,6 +1,7 @@
 #ifndef FRAMEASSEMBLER_H
 #define FRAMEASSEMBLER_H
 
+#include "OMR.h"
 #include "receiveUDPThread.h"
 #include "packetcontainer.h"
 #include <stdint.h>
@@ -32,7 +33,8 @@ public:
   void onEvent(PacketContainer &pc);
 
   int infoIndex = 0;
-  char infoHeader[MPX_PIXEL_COLUMNS/8]; //! Single info header (Contains an OMR)
+  int chipId;
+  OMR omr;
   bool isCounterhFrame = false;
 
   int chipIndex;
@@ -42,8 +44,10 @@ public:
 private:
   int rowPixels = 0, row_counter = -1, rubbish_counter = 0;
   int counter_depth = 12;
+  int counter_bits  = 12;
   int pixels_per_word =
       60 / counter_depth; //! TODO get or calculate pixel_depth
+  int pixel_mask = 0xfff;
 
   void hexdumpAndParsePacket(uint64_t* pixel_packet, int counter_bits, bool skip_data_packets, int chip);
 };
