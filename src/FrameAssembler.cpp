@@ -10,63 +10,83 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
   if (pc.chipIndex != chipIndex) {
     return;
   }
+  int packetSize = pc.size / sizeofuint64_t;
+    if (row_counter >= 0) {
+      // we're in a frame
+      int eorIndex = (endCursor - cursor) / pixels_per_word;
+      uint64_t endPacket = pc.data[eorIndex];
+      uint64_t type = endPacket & PKT_TYPE_MASK;
+      if (type == PIXEL_DATA_EOF || type == PIXEL_DATA_EOR) {
+      // that's OK!
+      } else {
+      // bugger, we lost something, find first special packet
+      int i = 0, nextRow;
+      type = pc.data[i] & PKT_TYPE_MASK;
+      switch (type)  {
+        case PIXEL_DATA_SOR :
+          // OK, that can happen on position 0, store the row, figure out the next one
+          nextRow = extractRow(pc.data[endCursor/pixels_per_word]);
+          cursor = 0;
+          break;
+        case PIXEL_DATA_SOF :
+        case INFO_HEADER_SOF:
+        case INFO_HEADER_MID:
+        case INFO_HEADER_EOF:
+          // somehow we found a new frame, store the current row/frame
+          row_counter = 0;
+          cursor = 0;
+          break;
+        case PIXEL_DATA_MID:
+          while (i < packetSize && (pc.data[i] & PKT_TYPE_MASK) == PIXEL_DATA_MID) i++;
+          [[fallthrough]];
+        case PIXEL_DATA_EOR :
+        case PIXEL_DATA_EOF :
+          int nextRow = extractRow(pc.data[i]);
+          if (nextRow < rownr_SOR) {
+          // we lost the rest of the frame; finish the current and start a new one
+          } else {
+          // we lost part of this frame; store the row, start a new one
+          }
+          cursor = endCursor - i * pixels_per_word;
+          row_counter = nextRow;
+          for (int j = 0; j < cursor; j++) row[j] = 0;
+          break;
+      }
+      }
+    }
+
   //! Start processing the pixel packet
   uint64_t *pixel_packet = (uint64_t *)pc.data;
-  // row_number_from_packet = -1;
-  int rownr_EOR = -1, rownr_SOR = -1;
-  int sizeofuint64_t = sizeof(uint64_t);
-  for (int j = 0; j < pc.size / sizeofuint64_t; ++j, ++pixel_packet) {
+  //row_number_from_packet = -1;
+  for (int j = 0; j < packetSize; ++j, ++pixel_packet) {
     uint64_t pixelword = *pixel_packet;
     uint64_t type = pixelword & PKT_TYPE_MASK;
-    /*if (i == 0) {
-        hexdumpAndParsePacket(pixel_packet, counter_depth, true, i);
-    }*/
+
     switch (type) {
-    case PIXEL_DATA_SOR:
-      ++pSOR;
-      // Henk checks for lost packets here
-      // Henk checks for row counter > 256, when would this ever happen?
-      ++row_counter;
-      rowPixels = 0;
-      rowPixels += pixels_per_word;
-      ++rownr_SOR;
-      break;
-    case PIXEL_DATA_EOR:
-      ++pEOR;
-      // Henk checks for lost pixels again
-      // Henk checks for row counter > 256, when would this ever happen?
-      rowPixels += MPX_PIXEL_COLUMNS -
-                   (MPX_PIXEL_COLUMNS / pixels_per_word) * pixels_per_word;
-      ++rownr_EOR;
-      /*if (rownr_SOR+1 != rownr_EOR) {
-          std::cout << "Row # SOR: " << rownr_SOR << " " << pSOF << " - Row #
-      EOR: " << rownr_EOR << " " << pEOF << "\n";
-      }*/
-      break;
     case PIXEL_DATA_SOF:
       ++pSOF;
-      // Henk checks for lost pixels again
-      rowPixels = 0;
-      rowPixels += pixels_per_word;
+      --pSOR;
+      [[fallthrough]];
+    case PIXEL_DATA_SOR:
+      ++pSOR;
       ++row_counter;
+      ++rownr_SOR;
+      --pMID;
+      [[fallthrough]];
+    case PIXEL_DATA_MID:
+      ++pMID;
       break;
     case PIXEL_DATA_EOF:
       ++pEOF;
-      // Henk checks for lost pixels again
-      rowPixels += pixels_per_word;
-      //! Henk extracts the FLAGS word here.
-      //! Dexter doesn't use this yet, maybe revisit later
-      /*row_number_from_packet = int(((*pixel_packet & ROW_COUNT_MASK) >>
-      ROW_COUNT_SHIFT)); if (row_number_from_packet != 255) { std::cout << ">> "
-      << row_number_from_packet << "\n";
-      }*/
-      break;
-    case PIXEL_DATA_MID:
-      ++pMID;
-      rowPixels += pixels_per_word;
-      if (rowPixels > MPX_PIXEL_COLUMNS) {
-        ++row_counter;
-      }
+      frameId = extractFrameId(pixelword);
+      row_counter = -1;
+      cursor = -1;
+      --pEOR;
+      [[fallthrough]];
+    case PIXEL_DATA_EOR:
+      ++pEOR;
+      //row_number_from_packet = extractRow(pixelword);
+      ++rownr_EOR;
       break;
     case INFO_HEADER_SOF:
       //! This is really iSOF (N*1) + iMID (N*6) + iEOF (N*1) = 8*N
@@ -94,6 +114,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
       pixels_per_word = 60 / counter_bits;
       pixel_mask = (1 << counter_bits) - 1;
       isCounterhFrame = omr.getMode() == 1;
+      endCursor = MPX_PIXEL_COLUMNS - (MPX_PIXEL_COLUMNS % pixels_per_word);
       break;
     default:
       // Rubbish packets - skip these

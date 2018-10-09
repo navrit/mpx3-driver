@@ -42,12 +42,21 @@ public:
            iEOF = 0, def = 0;
 
 private:
-  int rowPixels = 0, row_counter = -1, rubbish_counter = 0;
+  int rownr_EOR = -1, rownr_SOR = -1;
+  int sizeofuint64_t = sizeof(uint64_t);
+  int row_counter = -1, cursor = -1, rubbish_counter = 0;
   int counter_depth = 12;
   int counter_bits  = 12;
   int pixels_per_word =
       60 / counter_depth; //! TODO get or calculate pixel_depth
   int pixel_mask = 0xfff;
+  int endCursor = 256;
+
+  int frameId = -1;
+  short row[MPX_PIXEL_COLUMNS];
+
+  inline int extractRow(long pixelword) { return int(((pixelword & ROW_COUNT_MASK) >> ROW_COUNT_SHIFT));}
+  inline int extractFrameId(long pixelword) { return (int) ((pixelword & FRAME_FLAGS_MASK) >> FRAME_FLAGS_SHIFT); }
 
   void hexdumpAndParsePacket(uint64_t* pixel_packet, int counter_bits, bool skip_data_packets, int chip);
 };
