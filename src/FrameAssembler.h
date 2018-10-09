@@ -1,10 +1,12 @@
 #ifndef FRAMEASSEMBLER_H
 #define FRAMEASSEMBLER_H
 
+#include <stdint.h>
+
 #include "OMR.h"
+#include "ChipFrame.h"
 #include "receiveUDPThread.h"
 #include "packetcontainer.h"
-#include <stdint.h>
 
 //! See Table 54 (MPX3 Packet Format) - SPIDR Register Map
 //! 64 bit masks because of the uint64_t data type
@@ -24,8 +26,6 @@ const static uint64_t ROW_COUNT_MASK = 0x0FF0000000000000;
 const static uint64_t ROW_COUNT_SHIFT = 52;
 const static uint64_t FRAME_FLAGS_MASK = 0x000FFFF000000000;
 const static uint64_t FRAME_FLAGS_SHIFT = 36;
-
-const static int MPX_PIXEL_COLUMNS = 256;
 
 class FrameAssembler {
 public:
@@ -53,7 +53,8 @@ private:
   int endCursor = 256;
 
   int frameId = -1;
-  short row[MPX_PIXEL_COLUMNS];
+  ChipFrame testFrame;
+  short *row;
 
   inline int extractRow(long pixelword) { return int(((pixelword & ROW_COUNT_MASK) >> ROW_COUNT_SHIFT));}
   inline int extractFrameId(long pixelword) { return (int) ((pixelword & FRAME_FLAGS_MASK) >> FRAME_FLAGS_SHIFT); }

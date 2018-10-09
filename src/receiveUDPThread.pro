@@ -27,14 +27,14 @@ QMAKE_LFLAGS_RELEASE  -= -Wl,-O1
 QMAKE_LFLAGS_DEBUG    -= -Wl,-O1
 QMAKE_LFLAGS          *= -Wl,-O3
 
-equals(QMAKE_CXX, clang++) {
-    message("Enabling C++17 support in clang")
-    CONFIG *= c++1z
-}
-equals(QMAKE_CXX, g++) {
-    message("Enabling C++17 support in g++")
-    CONFIG *= c++1z
-}
+#equals(QMAKE_CXX, clang++) {
+#    message("Enabling C++17 support in clang")
+#    CONFIG *= c++1z
+#}
+#equals(QMAKE_CXX, g++) {
+#    message("Enabling C++17 support in g++")
+#    CONFIG *= c++1z
+#}
 
 SOURCES += TestDriver.cpp \
            receiveUDPThread.cpp \
@@ -44,7 +44,8 @@ SOURCES += TestDriver.cpp \
            ReceiverThreadC.cpp \
            FramebuilderThread.cpp \
            FramebuilderThreadC.cpp \
-           FrameAssembler.cpp
+           FrameAssembler.cpp \
+    ChipFrame.cpp
 
 HEADERS += TestDriver.h \
            receiveUDPThread.h \
@@ -61,6 +62,7 @@ HEADERS += TestDriver.h \
            FrameAssembler.h \
            configs.h \
     packetcontainer.h \
-    OMR.h
+    OMR.h \
+    ChipFrame.h
 
 CONFIG += static

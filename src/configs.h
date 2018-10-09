@@ -12,7 +12,7 @@ struct Config{
     const int trig_deadtime_us = 250; //! [us]
 
     const uint64_t nr_of_triggers = 10000;
-    const int continuousRW_frequency = 1200; //! [Hz]
+    const int continuousRW_frequency = 2000; //! [Hz]
     const bool readoutMode_sequential = false;
 
     int trig_freq_mhz = 0; //! Set this depending on readoutMode_sequential later
