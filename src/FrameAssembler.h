@@ -58,6 +58,8 @@ private:
 
   inline int extractRow(long pixelword) { return int(((pixelword & ROW_COUNT_MASK) >> ROW_COUNT_SHIFT));}
   inline int extractFrameId(long pixelword) { return (int) ((pixelword & FRAME_FLAGS_MASK) >> FRAME_FLAGS_SHIFT); }
+  inline uint64_t packetType(long pixelword) { return (pixelword & PKT_TYPE_MASK); }
+  inline bool packetEndsRow(long pixelword) { return (pixelword & 0x6000000000000000) == 0x6000000000000000; }
 
   void hexdumpAndParsePacket(uint64_t* pixel_packet, int counter_bits, bool skip_data_packets, int chip);
 };

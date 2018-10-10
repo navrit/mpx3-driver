@@ -14,18 +14,18 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
   }
   uint64_t *pixel_packet = (uint64_t *)pc.data;
   int packetSize = pc.size / sizeofuint64_t;
+  bool packetLoss;
     if (row_counter >= 0) {
       // we're in a frame
       int eorIndex = (endCursor - cursor) / pixels_per_word;
-      uint64_t endPacket = pixel_packet[eorIndex];
-      uint64_t type = endPacket & PKT_TYPE_MASK;
-      if (type == PIXEL_DATA_EOF || type == PIXEL_DATA_EOR) {
-      // that's OK!
-      } else {
+      packetLoss = ! packetEndsRow(pixel_packet[eorIndex]);
+    } else {
+      packetLoss = packetType(pixel_packet[0]) != INFO_HEADER_SOF;
+    }
+    if (packetLoss) {
       // bugger, we lost something, find first special packet
       int i = 0;
-      type = pixel_packet[i] & PKT_TYPE_MASK;
-      switch (type)  {
+      switch (packetType(pixel_packet[i]))  {
         case PIXEL_DATA_SOR :
           // OK, that can happen on position 0, store the row, claim we finished the previous
           row_counter = extractRow(pixel_packet[endCursor/pixels_per_word]) - 1;
@@ -39,7 +39,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
           testFrame.finish();
           break;
         case PIXEL_DATA_MID:
-          while (i < packetSize && (pixel_packet[i] & PKT_TYPE_MASK) == PIXEL_DATA_MID) i++;
+          while (i < packetSize && packetType(pixel_packet[i]) == PIXEL_DATA_MID) i++;
           [[fallthrough]];
         case PIXEL_DATA_EOR :
         case PIXEL_DATA_EOF :
@@ -55,11 +55,9 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
           }
           cursor = endCursor - i * pixels_per_word;
           assert (cursor >= 0 && cursor < 256);
-          assert ((pixel_packet[(endCursor - cursor) / pixels_per_word]
-                  & 0x6000000000000000) == 0x6000000000000000);
+          assert (packetEndsRow(pixel_packet[(endCursor - cursor) / pixels_per_word]));
           row_counter = nextRow;
           break;
-      }
       }
     }
 
