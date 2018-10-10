@@ -3,6 +3,9 @@ TARGET = TestMpx3Driver
 
 QT -= gui
 QT += network concurrent
+CONFIG(release, debug|release) {
+    CONFIG *= console
+}
 
 CONFIG(release, debug|release) {
     message("Enabling all optimisation flags as qmake sees fit")
