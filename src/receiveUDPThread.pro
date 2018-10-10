@@ -21,9 +21,10 @@ QMAKE_CXX             = clang++
 QMAKE_LINK            = $$QMAKE_CXX
 QMAKE_LINK_SHLIB      = $$QMAKE_CXX
 
-#message("Explicitly enabling AVX2 instructions")
-#QMAKE_CFLAGS          *= -mavx2
-#QMAKE_CXXFLAGS        *= -mavx2 -Wfatal-errors
+message("Explicitly enabling AVX2 instructions. WARNING: Turn this off if you are using a processor that doesn't support AVX2!")
+QMAKE_CFLAGS          *= -mavx2
+QMAKE_CXXFLAGS        *= -mavx2
+
 
 message("Passing high optimisation flags to the linker")
 QMAKE_LFLAGS_RELEASE  -= -Wl,-O1
