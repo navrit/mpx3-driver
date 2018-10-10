@@ -44,30 +44,30 @@ equals(QMAKE_CXX, g++) {
 }
 
 SOURCES += TestDriver.cpp \
-           receiveUDPThread.cpp \
-           SpidrController.cpp \
-           SpidrDaq.cpp \
-           ReceiverThread.cpp \
-           ReceiverThreadC.cpp \
-           FramebuilderThread.cpp \
-           FramebuilderThreadC.cpp \
-           FrameAssembler.cpp \
+    receiveUDPThread.cpp \
+    SpidrController.cpp \
+    SpidrDaq.cpp \
+    ReceiverThread.cpp \
+    ReceiverThreadC.cpp \
+    FramebuilderThread.cpp \
+    FramebuilderThreadC.cpp \
+    FrameAssembler.cpp \
     ChipFrame.cpp
 
 HEADERS += TestDriver.h \
-           receiveUDPThread.h \
-           SpidrController.h \
-           SpidrDaq.h \
-           mpx3defs.h \
-           mpx3dacsdescr.h \
-           spidrmpx3cmds.h \
-           spidrdata.h \
-           ReceiverThread.h \
-           ReceiverThreadC.h \
-           FramebuilderThread.h \
-           FramebuilderThreadC.h \
-           FrameAssembler.h \
-           configs.h \
+    receiveUDPThread.h \
+    SpidrController.h \
+    SpidrDaq.h \
+    mpx3defs.h \
+    mpx3dacsdescr.h \
+    spidrmpx3cmds.h \
+    spidrdata.h \
+    ReceiverThread.h \
+    ReceiverThreadC.h \
+    FramebuilderThread.h \
+    FramebuilderThreadC.h \
+    FrameAssembler.h \
+    configs.h \
     packetcontainer.h \
     OMR.h \
     ChipFrame.h

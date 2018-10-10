@@ -36,7 +36,7 @@ class receiveUDPThread : std::thread {
 public:
   receiveUDPThread(); //! TODO add parent pointer
   virtual ~receiveUDPThread();
-  bool initThread(const char *ipaddr, int UDP_Port);
+  bool initThread(const char *ipaddr="", int UDP_Port);
   int run();
 
   int set_scheduler();

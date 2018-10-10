@@ -17,6 +17,9 @@ bool receiveUDPThread::initThread(const char *ipaddr, int UDP_Port) {
   if (set_scheduler() != 0) {
     spdlog::get("console")->error("Could not set scheduler");
   }
+
+  (void) ipaddr; //! Purely to suppress the warning about ipaddr not being used.
+
   initSocket(); //! No arguments --> listens on all IP addresses
                 //! Arguments --> IP address as const char *
   initFileDescriptorsAndBindToPorts(UDP_Port);
@@ -48,8 +51,6 @@ int receiveUDPThread::run() {
   struct epoll_event events[1024];
 
   do {
-    //std::this_thread::sleep_for(
-    //    us(10)); //! For spinlock shit that wasn't here before
 
     do
        ret = epoll_wait(epfd, events, 1024, timeout_ms);
@@ -61,12 +62,12 @@ int receiveUDPThread::run() {
     if (ret > 0) {
       // An event on one of the fds has occurred.
       for (int j = 0; j < ret; j++) {
-          int etype = events[j].events;
+          uint32_t etype = events[j].events;
           if (! (etype & EPOLLIN)) {
             continue;
           }
 
-          peer_t *peer = (peer_t*) events[j].data.ptr;
+          peer_t *peer = (peer_t*) events[j].data.ptr; //! Does this have to be an old style cast?
           int i = peer->chipIndex;
           /* This consists of 12 (packets_per_frame) packets (MTU = 9000 bytes).
              First 11 are 9000 bytes, the last one is 7560 bytes.
@@ -76,17 +77,7 @@ int receiveUDPThread::run() {
           inputQueues[i].chipIndex = i;
           inputQueues[i].size = received_size;
 
-          // std::cout << std::dec << "Index: " << tmp << "\t Chip ID: " << i <<
-          // "\t Received size: " << received_size << "\n";
-          //++tmp;
-
-          //! This shouldn't happen but Henk has this check in his code
-          //! Maybe it's a good idea to keep it
-          // if (received_size <= 0) break;
-
-          // Count the number of packets received.
-          // Could calculate lost packets like Henk does, is this necessary?
-          ++packets;
+          ++packets; //! Count the number of packets received.
 
           frameAssembler[i]->onEvent(inputQueues[i]);
       }
@@ -339,7 +330,7 @@ void receiveUDPThread::printDebuggingOutput(uint64_t packets, uint64_t frames,
 }
 
 void receiveUDPThread::printEndOfRunInformation(
-    uint64_t frames, uint64_t packets, time_point begin, int nr_of_triggers,
+    uint64_t frames, uint64_t packets, time_point begin, uint64_t nr_of_triggers,
     int trig_length_us, int trig_deadtime_us, bool readoutMode_sequential) {
   spdlog::get("console")->info("Frames processed = {}", frames);
   steady_clock::time_point end = steady_clock::now();
