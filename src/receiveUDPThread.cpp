@@ -266,8 +266,8 @@ bool receiveUDPThread::initSocket(const char *inetIPAddr) {
 
 bool receiveUDPThread::initFileDescriptorsAndBindToPorts(int UDP_Port) {
   if ((epfd = epoll_create1(EPOLL_CLOEXEC)) == -1) {
-     perror("make_epoll_fd");
-     exit(1);
+     spdlog::get("console")->error("Make_epoll_fd");
+     return false;
   }
 
   for (int i = 0; i < config.number_of_chips; i++) {
@@ -295,7 +295,8 @@ bool receiveUDPThread::initFileDescriptorsAndBindToPorts(int UDP_Port) {
     peers[i].chipIndex = i;
     struct epoll_event ee = { .data.ptr = &peers[i], .events = EPOLLIN };
     if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ee)) {
-        perror("epoll_ctl");
+        spdlog::get("console")->error("epoll_ctl");
+        return false;
     }
   }
   return true;
