@@ -9,26 +9,28 @@ FrameAssembler::FrameAssembler(int chipIndex) {
 }
 
 void FrameAssembler::onEvent(PacketContainer &pc) {
+  //! This function includes LOADS of implicit conversion changes signedness, marked as // implicit sign change
+
   if (pc.chipIndex != chipIndex) {
     return;
   }
   uint64_t *pixel_packet = (uint64_t *)pc.data;
-  int packetSize = pc.size / sizeofuint64_t;
+  uint64_t packetSize = uint64_t(pc.size / sizeofuint64_t);
   bool packetLoss;
     if (row_counter >= 0) {
       // we're in a frame
       int eorIndex = (endCursor - cursor) / pixels_per_word;
-      packetLoss = ! packetEndsRow(pixel_packet[eorIndex]);
+      packetLoss = ! packetEndsRow(pixel_packet[eorIndex]); // implicit sign change
     } else {
-      packetLoss = packetType(pixel_packet[0]) != INFO_HEADER_SOF;
+      packetLoss = packetType(pixel_packet[0]) != INFO_HEADER_SOF; // implicit sign change
     }
     if (packetLoss) {
       // bugger, we lost something, find first special packet
       int i = 0;
-      switch (packetType(pixel_packet[i]))  {
+      switch (packetType(pixel_packet[i])) { // implicit sign change
         case PIXEL_DATA_SOR :
           // OK, that can happen on position 0, store the row, claim we finished the previous
-          row_counter = extractRow(pixel_packet[endCursor/pixels_per_word]) - 1;
+          row_counter = extractRow(pixel_packet[endCursor/pixels_per_word]) - 1; // implicit sign change
           assert (row_counter >= 0 && row_counter < 256);
           break;
         case PIXEL_DATA_SOF :
@@ -39,12 +41,15 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
           testFrame.finish();
           break;
         case PIXEL_DATA_MID:
-          while (i < packetSize && packetType(pixel_packet[i]) == PIXEL_DATA_MID) i++;
+          while (i < packetSize && packetType(pixel_packet[i]) == PIXEL_DATA_MID) i++; // implicit sign change
           [[fallthrough]];
         case PIXEL_DATA_EOR :
         case PIXEL_DATA_EOF :
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
           assert (i < packetSize);
-          int nextRow = extractRow(pixel_packet[i]);
+#pragma GCC diagnostic pop
+          int nextRow = extractRow(pixel_packet[i]); // implicit sign change
           assert (nextRow >= 0 && nextRow < 256);
           if (nextRow < row_counter) {
           // we lost the rest of the frame; finish the current and start a new one
@@ -55,7 +60,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
           }
           cursor = endCursor - i * pixels_per_word;
           assert (cursor >= 0 && cursor < 256);
-          assert (packetEndsRow(pixel_packet[(endCursor - cursor) / pixels_per_word]));
+          assert (packetEndsRow(pixel_packet[(endCursor - cursor) / pixels_per_word])); // implicit sign change
           row_counter = nextRow;
           break;
       }
@@ -63,7 +68,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
 
   //! Start processing the pixel packet
   //row_number_from_packet = -1;
-  for (int j = 0; j < packetSize; ++j, ++pixel_packet) {
+  for (int j = 0; j < packetSize; ++j, ++pixel_packet) { // implicit sign change
     uint64_t pixelword = *pixel_packet;
     uint64_t type = pixelword & PKT_TYPE_MASK;
 
@@ -88,7 +93,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
       cursor += pixels_per_word;
 #else
       for(int k=0; k<pixels_per_word; ++k, ++cursor ) {
-        row[cursor] = pixelword & pixel_mask;
+        row[cursor] = pixelword & pixel_mask; // implicit conversion precision loss unsigned long to short  // implicit sign change
         pixelword >>= counter_bits;
       }
 #endif
@@ -96,7 +101,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
       break;
     case PIXEL_DATA_EOF:
       ++pEOF;
-      frameId = extractFrameId(pixelword);
+      frameId = extractFrameId(pixelword); // implicit sign change
       row_counter = -1;
       cursor = -1;
       --pEOR;
@@ -104,7 +109,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
     case PIXEL_DATA_EOR:
       ++pEOR;
       for (; cursor < 256; cursor++) {
-        row[cursor] = pixelword & pixel_mask;
+        row[cursor] = pixelword & pixel_mask; // implicit sign change
         pixelword >>= counter_bits;
       }
       ++rownr_EOR;
@@ -117,7 +122,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
       //! This is really iMID (N*6) + iEOF (N*1) = 7*N
       ++iMID;
       if (infoIndex == 4)
-        chipId = (int) (pixelword & 0xffffffff);
+        chipId = int((pixelword & 0xffffffff));
       else if (infoIndex == 5 && chipId != 0) {
         omr.setHighR(pixelword & 0xffff);
       }
