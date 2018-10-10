@@ -34,14 +34,14 @@ QMAKE_LFLAGS_RELEASE  -= -Wl,-O1
 QMAKE_LFLAGS_DEBUG    -= -Wl,-O1
 QMAKE_LFLAGS          *= -Wl,-O3
 
-#equals(QMAKE_CXX, clang++) {
-#    message("Enabling C++17 support in clang")
-#    CONFIG *= c++1z
-#}
-#equals(QMAKE_CXX, g++) {
-#    message("Enabling C++17 support in g++")
-#    CONFIG *= c++1z
-#}
+equals(QMAKE_CXX, clang++) {
+    message("Enabling C++17 support in clang++")
+    CONFIG *= c++1z
+}
+equals(QMAKE_CXX, g++) {
+    message("Enabling C++17 support in g++")
+    CONFIG *= c++1z
+}
 
 SOURCES += TestDriver.cpp \
            receiveUDPThread.cpp \
