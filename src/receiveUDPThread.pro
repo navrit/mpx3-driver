@@ -25,6 +25,9 @@ message("Explicitly enabling AVX2 instructions. WARNING: Turn this off if you ar
 QMAKE_CFLAGS          *= -mavx2
 QMAKE_CXXFLAGS        *= -mavx2
 
+message("I will stop compliation on the first error")
+QMAKE_CFLAGS          *= -Wfatal-errors
+QMAKE_CXXFLAGS        *= -Wfatal-errors
 
 message("Passing high optimisation flags to the linker")
 QMAKE_LFLAGS_RELEASE  -= -Wl,-O1
