@@ -42,11 +42,8 @@ int receiveUDPThread::run() {
       calculateNumberOfFrames(packets, config.number_of_chips, packets_per_frame),
       begin, config.nr_of_triggers);
 
-  spdlog::get("console")->debug("Poll timeout = {} us", timeout_us);
-
-  timespec time;
-  time.tv_sec = 0;
-  time.tv_nsec = timeout_us * 1000;
+  int timeout_ms = int((timeout_us+0.5)/1000.); //! Round up
+  spdlog::get("console")->debug("Poll timeout = {} us = {} ms", timeout_us, timeout_ms);
 
   struct epoll_event events[1024];
 
@@ -55,8 +52,10 @@ int receiveUDPThread::run() {
     //    us(10)); //! For spinlock shit that wasn't here before
 
     do
-       ret = epoll_wait(epfd, events, 1024, 10);
-    while (ret == -1 && errno == EINTR);
+       ret = epoll_wait(epfd, events, 1024, timeout_ms);
+    while (ret == -1 && errno == EINTR); //! While not failed AND last error is "Interrupted system call"
+
+    //! TODO: THESE ret VARIABLES ARE MESSED UP NOW
 
     // Success
     if (ret > 0) {
