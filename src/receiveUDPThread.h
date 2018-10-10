@@ -36,7 +36,7 @@ class receiveUDPThread : std::thread {
 public:
   receiveUDPThread(); //! TODO add parent pointer
   virtual ~receiveUDPThread();
-  bool initThread(const char *ipaddr="", int UDP_Port);
+  bool initThread(const char *ipaddr="", int UDP_Port=50000);
   int run();
 
   int set_scheduler();
@@ -76,7 +76,7 @@ private:
   void printDebuggingOutput(uint64_t packets, uint64_t frames, time_point begin,
                             uint64_t nr_of_triggers);
   void printEndOfRunInformation(uint64_t frames, uint64_t packets,
-                                time_point begin, int triggers,
+                                time_point begin, uint64_t triggers,
                                 int trig_length_us, int trig_deadtime_us,
                                 bool readoutMode_sequential);
   void doEndOfRunTests(int number_of_chips, uint64_t pMID, uint64_t pSOR,
