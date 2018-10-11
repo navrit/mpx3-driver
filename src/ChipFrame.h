@@ -1,6 +1,7 @@
 #ifndef CHIPFRAME_H
 #define CHIPFRAME_H
 
+#include <stdint.h>
 #include <cstring>
 #include "mpx3defs.h"
 #include "OMR.h"
@@ -13,10 +14,10 @@ public:
     int brokenRows;
     void clear() { memset(data, 0, sizeof(data));}
     //bool isEmpty();
-    short * getRow(int rowNum) { return data + 256 * rowNum; }
+    uint16_t * getRow(int rowNum) { return data + MPX_PIXEL_COLUMNS * rowNum; }
     void finish();
 private:
-    short data[MPX_PIXELS];
+    uint16_t data[MPX_PIXELS];
 };
 
 #endif // CHIPFRAME_H

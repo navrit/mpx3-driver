@@ -20,13 +20,13 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
     if (row_counter >= 0) {
       // we're in a frame
       int eorIndex = (endCursor - cursor) / pixels_per_word;
-      packetLoss = ! packetEndsRow(pixel_packet[eorIndex]); // implicit sign change
+      packetLoss = ! packetEndsRow(pixel_packet[eorIndex]);
     } else {
-      packetLoss = packetType(pixel_packet[0]) != INFO_HEADER_SOF; // implicit sign change
+      packetLoss = packetType(pixel_packet[0]) != INFO_HEADER_SOF;
     }
     if (packetLoss) {
       // bugger, we lost something, find first special packet
-      int i = 0;
+      uint32_t i = 0;
       switch (packetType(pixel_packet[i])) { // implicit sign change
         case PIXEL_DATA_SOR :
           // OK, that can happen on position 0, store the row, claim we finished the previous
@@ -38,37 +38,50 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
         case INFO_HEADER_MID:
         case INFO_HEADER_EOF:
           // somehow we found a new frame, store the current row/frame
-          testFrame.finish();
+          fsm->putChipFrame(frameId, chipIndex, frame);
+          frame = nullptr;
           break;
         case PIXEL_DATA_MID:
           while (i < packetSize && packetType(pixel_packet[i]) == PIXEL_DATA_MID) i++; // implicit sign change
           [[fallthrough]];
         case PIXEL_DATA_EOR :
         case PIXEL_DATA_EOF :
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
           assert (i < packetSize);
-#pragma GCC diagnostic pop
-          int nextRow = extractRow(pixel_packet[i]); // implicit sign change
+          int nextRow = extractRow(pixel_packet[i]);
           assert (nextRow >= 0 && nextRow < 256);
-          if (nextRow < row_counter) {
-          // we lost the rest of the frame; finish the current and start a new one
-          testFrame.finish();
-          testFrame.clear();
+          if (frame == nullptr || nextRow < row_counter) {
+            // we lost the rest of the frame; finish the current and start a new one
+            if (frame != nullptr)
+                fsm->putChipFrame(frameId, chipIndex, frame);
+            frame = fsm->newChipFrame();
+            if (counter_depth == 24) {
+                if (omr.getMode() == 1) {
+                    // finished high, next frame
+                    omr.setMode(0);
+                    frameId++;
+                } else {
+                    // finished low, expect high
+                    omr.setMode(1);
+                }
+            } else {
+                frameId++;
+            }
+            frame->omr = omr;
           } else {
-          // we lost part of this frame; store the row, start a new one
+            // we lost part of this frame; store the row, start a new one
           }
           cursor = endCursor - i * pixels_per_word;
           assert (cursor >= 0 && cursor < 256);
           assert (packetEndsRow(pixel_packet[(endCursor - cursor) / pixels_per_word])); // implicit sign change
           row_counter = nextRow;
+          row = frame->getRow(row_counter);
           break;
       }
     }
 
   //! Start processing the pixel packet
   //row_number_from_packet = -1;
-  for (int j = 0; j < packetSize; ++j, ++pixel_packet) { // implicit sign change
+  for (unsigned j = 0; j < packetSize; ++j, ++pixel_packet) {
     uint64_t pixelword = *pixel_packet;
     uint64_t type = pixelword & PKT_TYPE_MASK;
 
@@ -83,7 +96,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
       ++row_counter;
       ++rownr_SOR;
       assert (row_counter >= 0 && row_counter < 256);
-      row = testFrame.getRow(row_counter);
+      row = frame->getRow(row_counter);
       cursor = 0;
       --pMID;
       [[fallthrough]];
@@ -93,7 +106,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
       cursor += pixels_per_word;
 #else
       for(int k=0; k<pixels_per_word; ++k, ++cursor ) {
-        row[cursor] = pixelword & pixel_mask; // implicit conversion precision loss unsigned long to short  // implicit sign change
+        row[cursor] = uint16_t(pixelword & pixel_mask);
         pixelword >>= counter_bits;
       }
 #endif
@@ -109,8 +122,13 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
     case PIXEL_DATA_EOR:
       ++pEOR;
       for (; cursor < 256; cursor++) {
-        row[cursor] = pixelword & pixel_mask; // implicit sign change
+        row[cursor] = uint16_t(pixelword & pixel_mask);
         pixelword >>= counter_bits;
+      }
+      if (type == PIXEL_DATA_EOF) {
+          // we're done with this one!
+          fsm->putChipFrame(frameId, chipIndex, frame);
+          frame = nullptr;
       }
       ++rownr_EOR;
       break;
@@ -139,8 +157,10 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
       counter_bits = counter_depth == 24 ? 12 : counter_depth;
       pixels_per_word = 60 / counter_bits;
       pixel_mask = (1 << counter_bits) - 1;
-      isCounterhFrame = omr.getMode() == 1;
       endCursor = MPX_PIXEL_COLUMNS - (MPX_PIXEL_COLUMNS % pixels_per_word);
+      assert (frame == nullptr);
+      frame = fsm->newChipFrame();
+      frame->omr = omr;
       break;
     default:
       // Rubbish packets - skip these

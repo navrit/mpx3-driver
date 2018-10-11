@@ -52,7 +52,9 @@ SOURCES += TestDriver.cpp \
     FramebuilderThread.cpp \
     FramebuilderThreadC.cpp \
     FrameAssembler.cpp \
-    ChipFrame.cpp
+    ChipFrame.cpp \
+    FrameSet.cpp \
+    FrameSetManager.cpp
 
 HEADERS += TestDriver.h \
     receiveUDPThread.h \
@@ -70,6 +72,8 @@ HEADERS += TestDriver.h \
     configs.h \
     packetcontainer.h \
     OMR.h \
-    ChipFrame.h
+    ChipFrame.h \
+    FrameSet.h \
+    FrameSetManager.h
 
 CONFIG += static
