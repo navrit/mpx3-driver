@@ -9,12 +9,11 @@ FrameAssembler::FrameAssembler(int chipIndex) {
 }
 
 void FrameAssembler::onEvent(PacketContainer &pc) {
-  //! This function includes LOADS of implicit conversion changes signedness, marked as // implicit sign change
 
   if (pc.chipIndex != chipIndex) {
     return;
   }
-  uint64_t *pixel_packet = (uint64_t *)pc.data;
+  uint64_t *pixel_packet = reinterpret_cast<uint64_t *>(pc.data);
   uint64_t packetSize = uint64_t(pc.size / sizeofuint64_t);
   bool packetLoss;
     if (row_counter >= 0) {
@@ -26,11 +25,11 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
     }
     if (packetLoss) {
       // bugger, we lost something, find first special packet
-      uint32_t i = 0;
-      switch (packetType(pixel_packet[i])) { // implicit sign change
+      uint16_t i = 0;
+      switch (packetType(pixel_packet[i])) {
         case PIXEL_DATA_SOR :
           // OK, that can happen on position 0, store the row, claim we finished the previous
-          row_counter = extractRow(pixel_packet[endCursor/pixels_per_word]) - 1; // implicit sign change
+          row_counter = extractRow(pixel_packet[endCursor/pixels_per_word]) - 1;
           assert (row_counter >= 0 && row_counter < 256);
           break;
         case PIXEL_DATA_SOF :
@@ -42,7 +41,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
           frame = nullptr;
           break;
         case PIXEL_DATA_MID:
-          while (i < packetSize && packetType(pixel_packet[i]) == PIXEL_DATA_MID) i++; // implicit sign change
+          while (i < packetSize && packetType(pixel_packet[i]) == PIXEL_DATA_MID) i++;
           [[fallthrough]];
         case PIXEL_DATA_EOR :
         case PIXEL_DATA_EOF :
@@ -72,7 +71,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
           }
           cursor = endCursor - i * pixels_per_word;
           assert (cursor >= 0 && cursor < 256);
-          assert (packetEndsRow(pixel_packet[(endCursor - cursor) / pixels_per_word])); // implicit sign change
+          assert (packetEndsRow(pixel_packet[(endCursor - cursor) / pixels_per_word]));
           row_counter = nextRow;
           row = frame->getRow(row_counter);
           break;
@@ -114,9 +113,9 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
       break;
     case PIXEL_DATA_EOF:
       ++pEOF;
-      frameId = extractFrameId(pixelword); // implicit sign change
+      frameId = extractFrameId(pixelword);
       row_counter = -1;
-      cursor = -1;
+      cursor = 55555;
       --pEOR;
       [[fallthrough]];
     case PIXEL_DATA_EOR:
