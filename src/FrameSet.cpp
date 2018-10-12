@@ -6,6 +6,10 @@ FrameSet::FrameSet()
 
 }
 
+FrameSet::~FrameSet() {
+    clear();
+}
+
 void FrameSet::clear() {
     for (int i = 0; i < Config::number_of_chips; i++)
       for (int j = 0; j < 2; j++)
@@ -23,12 +27,21 @@ bool FrameSet::isComplete() {
         for (int i = 0; i < Config::number_of_chips; i++)
             if (frame[1][i] == nullptr) return false;
     }
+    return true;
+}
+
+bool FrameSet::isEmpty() {
+    for (int i = 0; i < Config::number_of_chips; i++)
+        if (frame[0][i] != nullptr) return false;
+    return true;
 }
 
 void FrameSet::putChipFrame(int chipIndex, ChipFrame *cf) {
     assert (chipIndex >= 0 && chipIndex < Config::number_of_chips);
     assert (cf != nullptr);
-    frame[cf->omr.getMode() == 1 ? 1 : 0][chipIndex] = cf;
+    ChipFrame **spot = &(frame[cf->omr.getMode() == 1 ? 1 : 0][chipIndex]);
+    if (*spot != nullptr) delete *spot;
+    *spot = cf;
 }
 
 void FrameSet::copyTo32(uint32_t *dest) {

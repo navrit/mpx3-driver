@@ -8,9 +8,11 @@ class FrameSet
 {
 public:
     FrameSet();
+    ~FrameSet();
     void clear();
     void putChipFrame(int chipIndex, ChipFrame * cf);
     bool isComplete();
+    bool isEmpty();
     void copyTo32(uint32_t *dest);
 
 private:
