@@ -12,7 +12,7 @@
 #include <thread>
 #include <unistd.h>
 
-#include "spdlog/spdlog.h"
+#include "spdlog/spdlog.h" //! For custom logging
 
 #include "FrameAssembler.h"
 #include "packetcontainer.h"

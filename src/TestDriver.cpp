@@ -43,7 +43,7 @@ bool testDriver::initSpidrController(std::string IPAddr, int port) {
   if (spidrcontrol != nullptr) {
     return true;
   } else {
-    spdlog::get("console")->error("Could not make SpidrController, start the "
+    spdlog::get("console")->error("Could not make SpidrController. Start the "
                                   "emulator or connect a SPIDR.\n");
     return false;
   }
