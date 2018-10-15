@@ -1,16 +1,19 @@
-#include "TestDriver.h"
-#include "QVector"
-#include "receiveUDPThread.h"
+#include "TestDriver.h" //! Include it's own header file
+#include "receiveUDPThread.h" //! Include the receive UDP Thread class
 
-#include <chrono>
-
+/**
+ * @brief The entry point to the class. Basically main()
+ * @return void
+ */
 void testDriver::run() {
   console = spdlog::stdout_color_mt("console");
   spdlog::get("console")->set_level(spdlog::level::debug);
 
+  /* Exit now if you cannot connect to the SPIDR*/
   if (!initSpidrController(networkSettings.socketIPAddr, networkSettings.TCPPort)) {
       return;
   }
+  /* Exit now if you are not connected to the SPIDR*/
   if (!checkConnectedToDetector()) {
       return;
   }
@@ -34,6 +37,13 @@ void testDriver::run() {
   return;
 }
 
+/**
+ * @brief Initialise the SpidrController and connect
+ * @param IPAddr - The IPv4 address as a string, usually 192.168.100.10 or 192.168.1.10
+ * @param port - The TCP port to bind to for slow control, default: 50000
+ * @return true - Initialised and connected
+ * @return false - Could not initialise or connect
+ */
 bool testDriver::initSpidrController(std::string IPAddr, int port) {
   int a, b, c, d;
   sscanf(IPAddr.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d);
@@ -49,7 +59,8 @@ bool testDriver::initSpidrController(std::string IPAddr, int port) {
 
 /**
  * @brief Check if we are connected
- * @return true - connected. false - not connected, could be a problem with the network, network settings, firewall or the SPIDR is not on
+ * @return true - connected
+ * @return false - not connected, could be a problem with the network, network settings, firewall or the SPIDR is not on
  */
 bool testDriver::checkConnectedToDetector() {
   if (!spidrcontrol->isConnected()) {
@@ -66,6 +77,11 @@ bool testDriver::checkConnectedToDetector() {
   }
 }
 
+/**
+ * @brief Say which readout mode this is running in
+ * @param readoutMode_sequential - Sequential (SRW) or continuous (CRW) readout mode
+ * @return void
+ */
 void testDriver::printReadoutMode(bool readoutMode_sequential) {
   if (readoutMode_sequential) {
     spdlog::get("console")->info("Sequential R/W readout mode");
@@ -79,13 +95,13 @@ void testDriver::printReadoutMode(bool readoutMode_sequential) {
  * @return true - initialisation successful. false - something failed
  *
  * @details Print readout mode.
- *          Stop the trigger and set readout mode.
- *          Initialise SPIDR acquisition - trigger, number of links etc.
- *          Suppress SPIDR debugging messages.
- *          Set default IDELAY values. For some reason the last chip needs a lower IDELAY...
- *          Initialise bias voltage at +100V.
- *          Correctly set the trigger frequency in millihertz.
- *          Submit and print the trigger configuration.
+ * @details Stop the trigger and set readout mode.
+ * @details Initialise SPIDR acquisition - trigger, number of links etc.
+ * @details Suppress SPIDR debugging messages.
+ * @details Set default IDELAY values. For some reason the last chip needs a lower IDELAY...
+ * @details Initialise bias voltage at +100V.
+ * @details Correctly set the trigger frequency in millihertz.
+ * @details Submit and print the trigger configuration.
  */
 bool testDriver::initDetector() {
   printReadoutMode(config.readoutMode_sequential);
@@ -123,7 +139,7 @@ bool testDriver::initDetector() {
   spidrcontrol->setLogLevel(0);
 
   /* Set default IDELAY values. For some reason the last chip needs a lower IDELAY... */
-  QVector<uint8_t> _chipIDELAYS = {15, 15, 15, 10};
+  std::vector<int> _chipIDELAYS = {15, 15, 15, 10};
   spidrcontrol->setSpidrReg(0x10A0, _chipIDELAYS[0], true);
   spidrcontrol->setSpidrReg(0x10A4, _chipIDELAYS[1], true);
   spidrcontrol->setSpidrReg(0x10A8, _chipIDELAYS[2], true);
@@ -155,6 +171,10 @@ bool testDriver::initDetector() {
   return true;
 }
 
+/**
+ * @brief Update the timeout in microseconds for receiveUDPThread, used for the epoll timeout
+ * @return void
+ */
 void testDriver::updateTimeout_us() {
   if (config.readoutMode_sequential) {
     config.timeout_us = config.trig_length_us + config.trig_deadtime_us; //! [us]
@@ -164,6 +184,10 @@ void testDriver::updateTimeout_us() {
   spdlog::get("console")->info("Updated timeout to {} ms", config.timeout_us / 1000.);
 }
 
+/**
+ * @brief Prints [START] and the trigger frequency in millihertz, updates the trigger frequency and starts the trigger
+ * @return true - trigger has started
+ */
 bool testDriver::startTrigger() {
   spdlog::get("console")->info("[START]");
 
@@ -180,6 +204,11 @@ bool testDriver::startTrigger() {
   return true;
 }
 
+/**
+ * @brief Stops the trigger depending on which readout mode we are in
+ * @param readoutMode_sequential - Is it sequential (SRW) or continuous (CRW) readout mode?
+ * @return void
+ */
 void testDriver::stopTrigger(bool readoutMode_sequential) {
   if (readoutMode_sequential) {
     spidrcontrol->stopAutoTrigger();
@@ -188,11 +217,19 @@ void testDriver::stopTrigger(bool readoutMode_sequential) {
   }
 }
 
+/**
+ * @brief Delete spidrcontrol pointer and print [END]
+ * @return void
+ */
 void testDriver::cleanup() {
   delete spidrcontrol;
   spdlog::get("console")->info("[END]");
 }
 
+/**
+ * @brief main, initialise the testDriver class and run
+ * @return 0
+ */
 int main() {
   testDriver td;
   td.run();
