@@ -22,6 +22,12 @@ qmake && make -j12 && make clean && ./receiveUDPThread
 ```
 This is friendly with QtCreator of course, no weird configurations are required
 
+Make documentation
+```
+cd doc/
+doxygen Doxyfile
+```
+
 ## Dependencies
 * Mostly standard Linux/Unix
 * Qt (tested with 5.10 and 5.11, any recent version should work)
