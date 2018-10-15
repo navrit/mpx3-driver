@@ -76,7 +76,7 @@ SpidrController::SpidrController( int ipaddr3,
 
   _sock->connectToHost( QString::fromStdString( oss.str() ), port );
 
-  _sock->waitForConnected( 5000 );
+  _sock->waitForConnected( 100 );
 
   // Initialize the local pixel configuration data array to all zeroes
   this->resetPixelConfig();
