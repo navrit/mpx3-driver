@@ -1,5 +1,11 @@
 # My new super cool amazing Medipix3 SPIDR driver
 
+## Data flow diagram
+![Last updated: 15/10/2018](./doc/20181015-mpx3-driver-diagram.svg)
+
+## Ownership diagram
+* Fill this in later
+
 ## Description
 * This Receiver UDP Thread binds to ports 8192-8195 on a specified address (ANY by default) and receive packets from the UDP streams from the SPIDR/emulator.
 * SpidrController and SpidrDaq are used to trigger readout as usual.
