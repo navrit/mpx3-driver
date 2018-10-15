@@ -5,4 +5,4 @@ build-receiveUDPThread-*/
 *.autosave
 Makefile
 receiveUDPThread
-
+/doc/doxygen_output/*
