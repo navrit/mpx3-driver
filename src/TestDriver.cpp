@@ -14,18 +14,16 @@ void testDriver::run() {
   if (!checkConnectedToDetector()) {
       return;
   }
-  stopTrigger(config.readoutMode_sequential); //! It is possible that someone didn't
-                                       //! stop the trigger from a previous run
+  /* It is possible that someone didn't stop the trigger from a previous run */
+  stopTrigger(config.readoutMode_sequential);
   initDetector();
 
-  //! Instantiate receiveUDPThread
-  receiveUDPThread *receiveUDPthread =
-      new receiveUDPThread(); //! Same perfomance if it's on the stack or the
-                              //! heap
+  /* Instantiate receiveUDPThread. Same perfomance if it's on the stack or the heap */
+  receiveUDPThread *receiveUDPthread = new receiveUDPThread();
   updateTimeout_us();
-  receiveUDPthread->setPollTimeout(config.timeout_us); //! [microseconds]
+  receiveUDPthread->setPollTimeout(config.timeout_us); /* [microseconds] */
 
-  //! Initialise and run receiveUDPThread if init succeeds
+  /* Initialise and run receiveUDPThread if init succeeds */
   if (receiveUDPthread->initThread("", networkSettings.portno) == true) {
     startTrigger();
     receiveUDPthread->run();
