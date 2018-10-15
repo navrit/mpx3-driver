@@ -11,7 +11,7 @@ void testDriver::run() {
   if (!initSpidrController(networkSettings.socketIPAddr, networkSettings.TCPPort)) {
       return;
   }
-  if (!connectToDetector()) {
+  if (!checkConnectedToDetector()) {
       return;
   }
   stopTrigger(config.readoutMode_sequential); //! It is possible that someone didn't
@@ -49,7 +49,7 @@ bool testDriver::initSpidrController(std::string IPAddr, int port) {
   }
 }
 
-bool testDriver::connectToDetector() {
+bool testDriver::checkConnectedToDetector() {
   // Are we connected ?
   if (!spidrcontrol->isConnected()) {
     spdlog::get("console")->error("SpidrController :(\t{}: {}, {}",

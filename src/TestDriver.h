@@ -35,6 +35,7 @@ private:
   bool startTrigger();
   void stopTrigger(bool readoutMode_sequential);
   void cleanup();
+    bool checkConnectedToDetector();
 
   SpidrController *spidrcontrol = nullptr;
 
