@@ -43,7 +43,6 @@ private:
     bool initSpidrController(std::string IPAddr, int port);
     /** \brief Check if we are connected */
     bool checkConnectedToDetector();
-    /** \brief Get the detector ready for acquisition */
     bool initDetector();
     /** \brief Say which readout mode this is running in
       * \param readoutMode_sequential - Sequential (SRW) or continuous (CRW) readout mode */

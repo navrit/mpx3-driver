@@ -47,8 +47,11 @@ bool testDriver::initSpidrController(std::string IPAddr, int port) {
   }
 }
 
+/**
+ * @brief Check if we are connected
+ * @return true - connected. false - not connected, could be a problem with the network, network settings, firewall or the SPIDR is not on
+ */
 bool testDriver::checkConnectedToDetector() {
-  // Are we connected ?
   if (!spidrcontrol->isConnected()) {
     spdlog::get("console")->error("SpidrController :(\t{}: {}, {}",
                                   spidrcontrol->ipAddressString(),
@@ -71,9 +74,23 @@ void testDriver::printReadoutMode(bool readoutMode_sequential) {
   }
 }
 
+/**
+ * @brief testDriver::initDetector Get the detector ready for acquisition
+ * @return true - initialisation successful. false - something failed
+ *
+ * @details Print readout mode.
+ *          Stop the trigger and set readout mode.
+ *          Initialise SPIDR acquisition - trigger, number of links etc.
+ *          Suppress SPIDR debugging messages.
+ *          Set default IDELAY values. For some reason the last chip needs a lower IDELAY...
+ *          Initialise bias voltage at +100V.
+ *          Correctly set the trigger frequency in millihertz.
+ *          Submit and print the trigger configuration.
+ */
 bool testDriver::initDetector() {
   printReadoutMode(config.readoutMode_sequential);
 
+  /* Stop the trigger and set readout mode */
   if (config.readoutMode_sequential) {
     spidrcontrol->stopAutoTrigger();
 
@@ -88,23 +105,24 @@ bool testDriver::initDetector() {
     }
   }
 
-  // Initialise SPIDR acquisition - trigger, number of links etc.
+  /* Initialise SPIDR acquisition - trigger, number of links etc. */
   for (int i = 0; i < config.number_of_chips; i++) {
     spidrcontrol->setPs(i, 3);
     spidrcontrol->setEqThreshH(i, false);
     spidrcontrol->setInternalTestPulse(i, true);
     spidrcontrol->setDiscCsmSpm(
-        i, 0); //! In Eq mode using 0: select DiscL, 1: selects DiscH
-    spidrcontrol->setCsmSpm(i, 0);      //! Single pixel mode
-    spidrcontrol->setPolarity(i, true); //! Use Positive polarity
-    spidrcontrol->setGainMode(i, 1);    //! HGM
-    spidrcontrol->setPixelDepth(i, 12, false,
-                                false);    //! 12 bit, single frame readout
-    spidrcontrol->setColourMode(i, false); //! Fine pitch mode
+        i, 0); /* In Eq mode using 0: select DiscL, 1: selects DiscH */
+    spidrcontrol->setCsmSpm(i, 0);      /* Single pixel mode */
+    spidrcontrol->setPolarity(i, true); /* Use Positive polarity */
+    spidrcontrol->setGainMode(i, 1);    /* HGM */
+    spidrcontrol->setPixelDepth(i, 12, false, false); /* 12 bit, single frame readout */
+    spidrcontrol->setColourMode(i, false); /* Fine pitch mode */
   }
   spidrcontrol->resetCounters();
+  /* Suppress SPIDR debugging messages */
   spidrcontrol->setLogLevel(0);
 
+  /* Set default IDELAY values. For some reason the last chip needs a lower IDELAY... */
   QVector<uint8_t> _chipIDELAYS = {15, 15, 15, 10};
   spidrcontrol->setSpidrReg(0x10A0, _chipIDELAYS[0], true);
   spidrcontrol->setSpidrReg(0x10A4, _chipIDELAYS[1], true);
@@ -113,15 +131,19 @@ bool testDriver::initDetector() {
 
   spdlog::get("console")->info("HDMI unmodified");
 
+  /* Initialise bias voltage at +100V */
   spidrcontrol->setBiasSupplyEna(true);
   spidrcontrol->setBiasVoltage(100);
 
+  /* Correctly set the trigger frequency in millihertz */
   if (config.readoutMode_sequential) {
     config.trig_freq_mhz =
         int(1E3 * (1. / (double((config.trig_length_us + config.trig_deadtime_us)) / 1E6)));
   } else {
     config.trig_freq_mhz = int(1E3 * (1. / (1.0 * (double(config.trig_length_us / 1E6)))));
   }
+
+  /* Submit and print the trigger configuration */
   spidrcontrol->setShutterTriggerConfig(config.trig_mode, config.trig_length_us,
                                         config.trig_freq_mhz, config.nr_of_triggers);
   spdlog::get("console")->info("Trigger data:");
