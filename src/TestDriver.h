@@ -37,19 +37,23 @@ public:
     std::shared_ptr<spdlog::logger> console;
 
 private:
-    /** \brief Initialise the SpidrController and connect */
+    /** \brief Initialise the SpidrController and connect
+     * \param IPAddr - The IPv4 address as a string, usually 192.168.100.10 or 192.168.1.10
+     * \param port - The TCP port to bind to for slow control, default: 50000 */
     bool initSpidrController(std::string IPAddr, int port);
     /** \brief Check if we are connected */
     bool checkConnectedToDetector();
     /** \brief Get the detector ready for acquisition */
     bool initDetector();
-    /** \brief Say which readout mode this is running in */
+    /** \brief Say which readout mode this is running in
+      * \param readoutMode_sequential - Sequential (SRW) or continuous (CRW) readout mode */
     void printReadoutMode(bool readoutMode_sequential);
     /** \brief Update the timeout in microseconds for receiveUDPThread, used for the epoll timeout */
     void updateTimeout_us();
     /** \brief Starts the trigger only */
     bool startTrigger();
-    /** \brief Stops the trigger depending on which readout mode we are in */
+    /** \brief Stops the trigger depending on which readout mode we are in
+      * \param readoutMode_sequential - Is it sequential (SRW) or continuous (CRW) readout mode? */
     void stopTrigger(bool readoutMode_sequential);
     /** \brief Any shutdown cleanup code, deleting pointers etc. */
     void cleanup();
