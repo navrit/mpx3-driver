@@ -8,8 +8,12 @@ void testDriver::run() {
   console = spdlog::stdout_color_mt("console");
   spdlog::get("console")->set_level(spdlog::level::debug);
 
-  initSpidrController(networkSettings.socketIPAddr, networkSettings.TCPPort);
-  connectToDetector();
+  if (!initSpidrController(networkSettings.socketIPAddr, networkSettings.TCPPort)) {
+      return;
+  }
+  if (!connectToDetector()) {
+      return;
+  }
   stopTrigger(config.readoutMode_sequential); //! It is possible that someone didn't
                                        //! stop the trigger from a previous run
   initDetector();

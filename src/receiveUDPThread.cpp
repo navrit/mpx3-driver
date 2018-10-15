@@ -22,15 +22,19 @@ bool receiveUDPThread::initThread(const char *ipaddr, int UDP_Port) {
 
   initSocket(); //! No arguments --> listens on all IP addresses
                 //! Arguments --> IP address as const char *
-  initFileDescriptorsAndBindToPorts(UDP_Port);
-  FrameSetManager *fsm = new FrameSetManager();
+  bool ret = initFileDescriptorsAndBindToPorts(UDP_Port);
+  if (ret) {
+      FrameSetManager *fsm = new FrameSetManager();
 
-  for (int i = 0; i < config.number_of_chips; ++i) {
-    frameAssembler[i] = new FrameAssembler(i);
-    frameAssembler[i]->setFrameSetManager(fsm);
+      for (int i = 0; i < config.number_of_chips; ++i) {
+        frameAssembler[i] = new FrameAssembler(i);
+        frameAssembler[i]->setFrameSetManager(fsm);
+      }
+
+      return true;
+  } else {
+      return false;
   }
-
-  return true;
 }
 
 int receiveUDPThread::run() {
