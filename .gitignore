@@ -1,4 +1,4 @@
-build-receiveUDPThread-*/
+/build/*
 *.stash
 *.o
 *.user
@@ -6,3 +6,4 @@ build-receiveUDPThread-*/
 Makefile
 receiveUDPThread
 /doc/doxygen_output/*
+

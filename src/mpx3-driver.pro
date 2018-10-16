@@ -3,6 +3,7 @@ TARGET = TestMpx3Driver
 
 QT -= gui
 QT += network concurrent
+
 CONFIG(release, debug|release) {
     CONFIG *= console
 }
@@ -43,7 +44,15 @@ equals(QMAKE_CXX, g++) {
     CONFIG *= c++1z
 }
 
-SOURCES += TestDriver.cpp \
+DESTDIR = $$PWD/../build
+OBJECTS_DIR = $$PWD/../build/objects
+MOC_DIR     = $$PWD/../build/moc
+UI_DIR      = $$PWD/../build/ui
+
+INCLUDEPATH += libs
+
+SOURCES += \
+    TestDriver.cpp \
     receiveUDPThread.cpp \
     SpidrController.cpp \
     SpidrDaq.cpp \
@@ -54,7 +63,8 @@ SOURCES += TestDriver.cpp \
     FrameAssembler.cpp \
     ChipFrame.cpp \
     FrameSet.cpp \
-    FrameSetManager.cpp
+    FrameSetManager.cpp \
+    main.cpp
 
 HEADERS += TestDriver.h \
     receiveUDPThread.h \
