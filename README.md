@@ -18,14 +18,14 @@
 ## Build and run instructions
 ```
 cd src/
-qmake && make -j12 && make clean && ./receiveUDPThread
+qmake && make -j12 && make clean && ./TestMpx3Driver
 ```
 This is friendly with QtCreator of course, no weird configurations are required
 
-Make documentation
+Generate and open documentation
 ```
 cd doc/
-doxygen Doxyfile
+generateAndOpenDocs.sh
 ```
 
 ## Dependencies
