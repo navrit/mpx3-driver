@@ -41,7 +41,7 @@ void FramebuilderThreadC::processFrame()
     {
       // If necessary wait until the previous frame has been consumed
       _mutex.lock();
-      if( _hasFrame ) _outputCondition.wait( &_mutex );
+      if( _under_construction == _with_client ) _outputCondition.wait( &_mutex );
       _mutex.unlock();
 
 
@@ -50,23 +50,68 @@ void FramebuilderThreadC::processFrame()
       // The following decoding operations could be done
       // in separate threads (i.e. by QtConcurrent)
 #ifdef _USE_QTCONCURRENT
-      if( _n > 1 )
-        {
+      int chipmask = (1 << _n) - 1;
+
+      if( _n > 1 ) do {
+
           QFuture<int> qf[4];
           for( i=0; i<_n; ++i )
-            qf[i] = QtConcurrent::run( this,
+              if (((1 << i) & chipmask) != 0)
+                qf[i] = QtConcurrent::run( this,
                                        &FramebuilderThreadC::mpx3RawToPixel,
                                        _receivers[i]->frameData(),
                                        _receivers[i]->dataSizeFrame(),
-                                       &_decodedFrame[i][0],
+                                       &_decodedFrames[_under_construction][i][0],
                                        _evtHdr.pixelDepth,
                                        //_devHdr[i].deviceType,
                                        //_compress );
                                        _receivers[i]->isCounterhFrame() );
           // Wait for threads to finish and get the results...
+          int8_t deltas[4];
+          bool jump = false;
           for( i=0; i<_n; ++i )
-            _frameSz[i] = qf[i].result();
-        }
+              if (((1 << i) & chipmask) != 0) {
+                int oldId = _frameId[i];
+                int newId = _frameId[i] = qf[i].result();
+                int8_t delta = deltas[i] = (int8_t) (newId - oldId);
+                if (delta != 1) jump = true;
+                _frameSz[i] = MPX_PIXELS * sizeof(int);
+          }
+          if (jump) {
+              qDebug() << "[WARNING] FrameIds jump: " << deltas[0] << ' ' << deltas[1] << ' ' << deltas[2] << ' ' << deltas[3];
+          }
+          bool different = false;
+          int maxid = -1;
+          for (int i = 0; i < _n; ++i) {
+
+            int fid = _frameId[i];
+            if (fid != maxid) {
+                if (maxid == -1) {
+                    maxid = fid;
+                    different = i>0;
+                } else {
+                    if (fid >= 0 && ((int8_t) (fid - maxid)) > 0) maxid = fid;
+                    different = true;
+                }
+            }
+          }
+          chipmask = 0;
+          if (different) {
+              qDebug() << "[WARNING] FrameIds " << _frameId[0] << ' ' << _frameId[1] << ' ' << _frameId[2] << ' ' << _frameId[3];
+              for (int i = 0; i < _n; ++i) {
+                  if (_frameId[i] != maxid) {
+                      _receivers[i]->releaseFrame();
+                      _mutex.lock();
+                      while( !_receivers[i]->hasFrame() ) _inputCondition.wait( &_mutex );
+                      _mutex.unlock();
+                      chipmask |= (1 << i);
+                  }
+              }
+          } else if (maxid == -1) {
+              chipmask = (1 << _n) - 1;
+          }
+      }
+          while (chipmask != 0);
       else
 #endif // _USE_QTCONCURRENT
         {
@@ -74,7 +119,7 @@ void FramebuilderThreadC::processFrame()
             _frameSz[i] =
               this->mpx3RawToPixel( _receivers[i]->frameData(),
                                     _receivers[i]->dataSizeFrame(),
-                                    _decodedFrame[i],
+                                    &_decodedFrames[_under_construction][i][0],
                                     _evtHdr.pixelDepth,
                                     //_devHdr[i].deviceType,
                                     //_compress );
@@ -100,9 +145,13 @@ void FramebuilderThreadC::processFrame()
       if( _evtHdr.pixelDepth != 24 ||
           (_evtHdr.pixelDepth == 24 && this->isCounterhFrame()) )
         {
-          _hasFrame = true;
+          _mutex.lock();
+          int temp = _under_construction;
+          _under_construction = 1 - temp;
+          _with_client = temp;
           //if( _callbackFunc ) _callbackFunc( _id );
           _frameAvailableCondition.wakeOne();
+          _mutex.unlock();
         }
     }
 }
@@ -137,6 +186,8 @@ int FramebuilderThreadC::mpx3RawToPixel( unsigned char *raw_bytes,
   u64  pixelword;
   u64  type;
   int  i, j;
+  int *temp2 = temp;
+  int frameId = -1;
   for( i=0; i<nbytes/sizeof(u64); ++i, ++pixelpkt )
     {
       pixelword = *pixelpkt;
@@ -145,34 +196,74 @@ int FramebuilderThreadC::mpx3RawToPixel( unsigned char *raw_bytes,
         {
         case PIXEL_DATA_SOR:
         case PIXEL_DATA_SOF:
-          //++rownr;
+          ++rownr;
           //pixelrow = &pixels[rownr * MPX_PIXEL_COLUMNS];
           index = 0;
-          memset( temp, 0, MPX_PIXEL_COLUMNS );
+          if( counter_depth == 24 && is_counterh )
+              memset( temp, 0, MPX_PIXEL_COLUMNS * sizeof(int));
+          else
+              temp2 = &pixels[rownr * MPX_PIXEL_COLUMNS];
           // 'break' left out intentionally;
           // continue unpacking the pixel packet
 
-        [[fallthrough]]; case PIXEL_DATA_MID:
+        [[fallthrough]]
+        case PIXEL_DATA_MID:
           // Unpack the pixel packet
-          for( j=0; j<pix_per_word; ++j, ++index )
+          // Make sure not to write outside the current pixel row
+        { int maxj = MPX_PIXEL_COLUMNS - index;
+          if (maxj > pix_per_word) maxj = pix_per_word;
+          for( j=0; j<maxj; ++j, ++index )
             {
-              // Make sure not to write outside the current pixel row
-              if( index < MPX_PIXEL_COLUMNS )
-                //pixelrow[index] = pixelword & pixel_mask;
-                temp[index] = pixelword & pixel_mask;
+              //pixelrow[index] = pixelword & pixel_mask;
+              temp2[index] = pixelword & pixel_mask;
               pixelword >>= counter_bits;
             }
+         }
           break;
 
-        case PIXEL_DATA_EOR:
         case PIXEL_DATA_EOF:
-          if( _applyLut )
-            // Extract the row counter from the data
-            rownr = (int) ((pixelword & ROW_COUNT_MASK) >> ROW_COUNT_SHIFT);
-          else
-            // The SPIDR LUT erroneously 'decodes' the row counter too..
-            // (firmware to be fixed?), so just keep a counter
-            ++rownr;
+          frameId = (int) ((pixelword & FRAME_FLAGS_MASK) >> FRAME_FLAGS_SHIFT);
+
+        case PIXEL_DATA_EOR:
+          if (_lutBug && ! _applyLut) {
+              // the pixel word is mangled, un-mangle it
+              if (counter_bits == 12) {
+                  long mask0 = 0x0000000000000fffL,
+                       mask4 = 0x0fff000000000000L;
+                  long p0 = _mpx3Rx12BitsLut[pixelword & mask0],
+                       p4 = ((long) (_mpx3Rx12BitsEnc[(pixelword & mask4) >> 48])) << 48;
+                  pixelword = pixelword & (~(mask0 | mask4)) | p0 | p4;
+              } else if (counter_bits == 6) {
+                  // decode pixel 0 .. 3
+                  long mask0 = 0x000000000000003fL, maskShifted = mask0;
+                  long wordShifted = pixelword;
+                  for (int i = 0; i < 4; i++) {
+                      long pixel = _mpx3Rx6BitsLut[wordShifted & mask0];
+                      pixelword = pixelword & (~maskShifted) | (pixel << (6 * i));
+                      wordShifted >>= 6;
+                      maskShifted <<= 6;
+                  }
+                  // leave pixel 4 .. 5
+                  wordShifted >>= 12;
+                  maskShifted <<= 12;
+                  // encode pixel 6 .. 9
+                  for (int i = 6; i < 10; i++) {
+                      long pixel = _mpx3Rx6BitsEnc[wordShifted & mask0];
+                      pixelword = pixelword & (~maskShifted) | (pixel << (6 * i));
+                      wordShifted >>= 6;
+                      maskShifted <<= 6;
+                  }
+              }
+              if (type == PIXEL_DATA_EOF) {
+                  // redo that!
+                  frameId = (int) ((pixelword & FRAME_FLAGS_MASK) >> FRAME_FLAGS_SHIFT);
+              }
+          }
+            // We could extract the row counter from the data
+            // except MOST old firmware versions have a LUT that
+            // erroneously 'decodes' the row counter too..
+            // NB: the above is an old comment, the block above should actually work around that bug! (BB/181002)
+            // assert rownr === (int) ((pixelword & ROW_COUNT_MASK) >> ROW_COUNT_SHIFT);
 
           // Unpack the pixel packet
           for( j=0; j<pix_per_word; ++j, ++index )
@@ -180,7 +271,7 @@ int FramebuilderThreadC::mpx3RawToPixel( unsigned char *raw_bytes,
               // Make sure not to write outside the current pixel row
               if( index < MPX_PIXEL_COLUMNS )
                 //pixelrow[index] = pixelword & pixel_mask;
-                temp[index] = pixelword & pixel_mask;
+                temp2[index] = pixelword & pixel_mask;
               pixelword >>= counter_bits;
             }
 
@@ -197,8 +288,8 @@ int FramebuilderThreadC::mpx3RawToPixel( unsigned char *raw_bytes,
             }
           else
             {
-              memcpy( &pixels[rownr * MPX_PIXEL_COLUMNS], temp,
-                      MPX_PIXEL_COLUMNS * sizeof(int) );
+              //memcpy( &pixels[rownr * MPX_PIXEL_COLUMNS], temp,
+                      //MPX_PIXEL_COLUMNS * sizeof(int) );
             }
           break;
 
@@ -278,7 +369,7 @@ int FramebuilderThreadC::mpx3RawToPixel( unsigned char *raw_bytes,
   //       }
   //     size = MPX_PIXELS / 8;
   //   }
-  return size;
+  return frameId;
 }
 
 // ----------------------------------------------------------------------------

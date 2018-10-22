@@ -59,6 +59,7 @@ class FramebuilderThread : public QThread
   void   setDecodeFrames( bool decode );
   void   setCompressFrames( bool compress );
   void   setLutEnable( bool enable ) { _applyLut = enable; }
+  void   setLutBug( bool bug ) { _lutBug = bug; }
   void   setFlush( bool flush ) { _flush = flush; }
 
   void   setCallbackId( int id ) { _id = id; }
@@ -105,7 +106,6 @@ class FramebuilderThread : public QThread
   bool  _decode;
   bool  _compress;
   bool  _flush;
-  bool  _hasFrame;
   bool  _abortFrame;
 
   QFile _file;
@@ -116,19 +116,25 @@ class FramebuilderThread : public QThread
 
   // Look-up tables for Medipix3RX pixel data decoding
   int           _mpx3Rx6BitsLut[64];
+  int           _mpx3Rx6BitsEnc[64];
   int           _mpx3Rx12BitsLut[4096];
+  int           _mpx3Rx12BitsEnc[4096];
   bool          _applyLut;
+  bool          _lutBug;
 
   // Info about the (decoded) set of frames
   i64           _timeStamp;
   i64           _timeStampSpidr;
   int           _frameSz[NR_OF_DEVICES];
+  int           _frameId[NR_OF_DEVICES];
   bool          _isCounterhFrame[NR_OF_DEVICES];
   SpidrHeader_t _spidrHeader[NR_OF_DEVICES];
 
   // Intermediate buffers for a (decoded) set of frames;
   // one from each of up to 4 receivers
-  int           _decodedFrame[NR_OF_DEVICES][256*256];
+  int           _decodedFrames[2][NR_OF_DEVICES][256*256];
+  std::atomic_int _under_construction{0};
+  std::atomic_int _with_client{-1};
 
   virtual int mpx3RawToPixel( unsigned char *raw_bytes,
                               int            nbytes,
