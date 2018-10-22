@@ -1,5 +1,5 @@
-#ifndef RECEIVEUDPTHREAD_H
-#define RECEIVEUDPTHREAD_H
+#ifndef UDPRECEIVER_H
+#define UDPRECEIVER_H
 
 #include <arpa/inet.h>
 #include <chrono>
@@ -19,6 +19,7 @@
 #include "PacketContainer.h"
 #include "configs.h"
 
+
 using time_point = std::chrono::steady_clock::time_point;
 using steady_clock = std::chrono::steady_clock;
 
@@ -37,7 +38,7 @@ class UdpReceiver {
 public:
   UdpReceiver(bool lutBug); //! TODO add parent pointer
   virtual ~UdpReceiver();
-  bool initThread(const char *ipaddr="", int UDP_Port=50000);
+  bool initThread(const char *ipaddr="", int UDP_Port=8192);
   void run();
   std::thread spawn() {
       return std::thread(&UdpReceiver::run, this);
@@ -67,8 +68,6 @@ private:
   bool initSocket(const char *inetIPAddr = "");
   bool initFileDescriptorsAndBindToPorts(int UDP_Port);
 
-  std::shared_ptr<spdlog::logger> console;
-
   int timeout_us = 10000;
 
   bool finished = false;
@@ -85,4 +84,4 @@ private:
   PacketContainer inputQueues[Config::number_of_chips];
   FrameAssembler *frameAssembler[Config::number_of_chips];
 };
-#endif // RECEIVEUDPTHREAD_H
+#endif // UDPRECEIVER_H

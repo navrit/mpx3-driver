@@ -5,8 +5,6 @@
 #include <errno.h>
 
 UdpReceiver::UdpReceiver(bool lutBug) {
-  console = spdlog::stdout_color_mt("console");
-  spdlog::get("console")->set_level(spdlog::level::debug);
   this->lutBug = lutBug;
 }
 
@@ -166,13 +164,13 @@ int UdpReceiver::print_affinity() {
   int ret = sched_getaffinity(0, sizeof(cpu_set_t), &mask);
 
   if (ret == -1) {
-    console->error("Sched_getaffinity, ret = {}", ret);
+    spdlog::get("console")->error("Sched_getaffinity, ret = {}", ret);
     return 1;
   } else {
     nproc = sysconf(_SC_NPROCESSORS_ONLN); // Get the number of logical CPUs.
 
     for (i = 0; i < nproc; i++) {
-      console->debug("Sched_getaffinity --> Core {} = {}", i,
+      spdlog::get("console")->debug("Sched_getaffinity --> Core {} = {}", i,
                                     CPU_ISSET(i, &mask));
     }
   }

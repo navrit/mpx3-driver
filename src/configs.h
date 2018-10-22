@@ -23,8 +23,8 @@ struct Config{
 };
 
 struct NetworkSettings{
-    const std::string socketIPAddr = "127.0.0.10";
-    // const std::string socketIPAddr = "192.168.100.10";
+    //const std::string socketIPAddr = "127.0.0.10";
+    const std::string socketIPAddr = "192.168.100.10";
     // const std::string socketIPAddr = "192.168.1.10";
     const int TCPPort = 50000;
     const int portno = 8192;

@@ -4,11 +4,21 @@ TARGET = TestMpx3Driver
 QT -= gui
 QT += network concurrent
 
-CONFIG(release, debug|release) {
-    CONFIG *= console
+CONFIG(debug, debug|release) {
+    DESTDIR = $$PWD/../build-debug
+    OBJECTS_DIR = $$PWD/../build-debug/objects
+    MOC_DIR     = $$PWD/../build-debug/moc
+    UI_DIR      = $$PWD/../build-debug/ui
 }
 
 CONFIG(release, debug|release) {
+    CONFIG *= console
+
+    DESTDIR = $$PWD/../build
+    OBJECTS_DIR = $$PWD/../build/objects
+    MOC_DIR     = $$PWD/../build/moc
+    UI_DIR      = $$PWD/../build/ui
+
     message("Enabling all optimisation flags as qmake sees fit")
     CONFIG *= optimize_full
 }
@@ -44,16 +54,12 @@ equals(QMAKE_CXX, g++) {
     CONFIG *= c++1z
 }
 
-DESTDIR = $$PWD/../build
-OBJECTS_DIR = $$PWD/../build/objects
-MOC_DIR     = $$PWD/../build/moc
-UI_DIR      = $$PWD/../build/ui
+
 
 INCLUDEPATH += libs
 
 SOURCES += \
-    TestDriver.cpp \
-    receiveUDPThread.cpp \
+    UdpReceiver.cpp \
     SpidrController.cpp \
     SpidrDaq.cpp \
     ReceiverThread.cpp \
@@ -66,8 +72,8 @@ SOURCES += \
     FrameSetManager.cpp \
     main.cpp
 
-HEADERS += TestDriver.h \
-    receiveUDPThread.h \
+HEADERS += \
+    UdpReceiver.h \
     SpidrController.h \
     SpidrDaq.h \
     mpx3defs.h \

@@ -34,7 +34,7 @@ const int   VERSION_ID = 0x18101200;
 
 // At least one argument needed for QCoreApplication
 //int   Argc = 1;
-//char *Argv[] = { "SpidrDaq" }; 
+//char *Argv[] = { "SpidrDaq" };
 //QCoreApplication *SpidrDaq::App = 0;
 // In c'tor?: Create the single 'QCoreApplication' we need for the event loop
 // in the receiver objects  ### SIGNALS STILL DO NOT WORK? Need exec() here..
@@ -45,11 +45,11 @@ const int   VERSION_ID = 0x18101200;
 // ----------------------------------------------------------------------------
 
 SpidrDaq::SpidrDaq( int ipaddr3,
-		    int ipaddr2,
-		    int ipaddr1,
-		    int ipaddr0,
-		    int port,
-		    int readout_mask )
+            int ipaddr2,
+            int ipaddr1,
+            int ipaddr0,
+            int port,
+            int readout_mask )
 {
   // Start data-acquisition with the given read-out mask
   // on the SPIDR module with the given IP address and port number
@@ -73,7 +73,7 @@ SpidrDaq::SpidrDaq( int ipaddr3,
 // ----------------------------------------------------------------------------
 
 SpidrDaq::SpidrDaq( SpidrController *spidrctrl,
-		    int              readout_mask )
+            int              readout_mask )
 {
   // If a SpidrController object is provided use it to find out the SPIDR's
   // Medipix device configuration and IP destination address, or else assume
@@ -88,28 +88,28 @@ SpidrDaq::SpidrDaq( SpidrController *spidrctrl,
       // from the SPIDR module
       int addr = 0;
       if( spidrctrl->getIpAddrDest( 0, &addr ) )
-	{
-	  ipaddr[3] = (addr >> 24) & 0xFF;
-	  ipaddr[2] = (addr >> 16) & 0xFF;
-	  ipaddr[1] = (addr >>  8) & 0xFF;
-	  ipaddr[0] = (addr >>  0) & 0xFF;
-	}
+    {
+      ipaddr[3] = (addr >> 24) & 0xFF;
+      ipaddr[2] = (addr >> 16) & 0xFF;
+      ipaddr[1] = (addr >>  8) & 0xFF;
+      ipaddr[0] = (addr >>  0) & 0xFF;
+    }
 
       this->getIdsPortsTypes( spidrctrl, ids, ports, types );
 
       // Adjust SPIDR read-out mask if requested:
       // Reset unwanted ports/devices to 0
       for( int i=0; i<4; ++i )
-	if( (readout_mask & (1<<i)) == 0 ) ports[i] = 0;
+    if( (readout_mask & (1<<i)) == 0 ) ports[i] = 0;
       // Read out the remaining devices
       readout_mask = 0;
       for( int i=0; i<4; ++i )
-	if( ports[i] != 0 ) readout_mask |= (1<<i);
+    if( ports[i] != 0 ) readout_mask |= (1<<i);
 
       // Set the new read-out mask if required
       int device_mask;
       if( spidrctrl->getAcqEnable(&device_mask) && device_mask != readout_mask )
-	spidrctrl->setAcqEnable( readout_mask );
+    spidrctrl->setAcqEnable( readout_mask );
     }
   this->init( ipaddr, ids, ports, types, spidrctrl );
 }
@@ -117,9 +117,9 @@ SpidrDaq::SpidrDaq( SpidrController *spidrctrl,
 // ----------------------------------------------------------------------------
 
 void SpidrDaq::getIdsPortsTypes( SpidrController *spidrctrl,
-				 int             *ids,
-				 int             *ports,
-				 int             *types )
+                 int             *ids,
+                 int             *ports,
+                 int             *types )
 {
   if( !spidrctrl ) return;
 
@@ -133,20 +133,20 @@ void SpidrDaq::getIdsPortsTypes( SpidrController *spidrctrl,
       ports[i] = 0;
       types[i] = 0;
       if( ids[i] != 0 )
-	{
-	  spidrctrl->getServerPort( i, &ports[i] );
-	  spidrctrl->getDeviceType( i, &types[i] );
-	}
+    {
+      spidrctrl->getServerPort( i, &ports[i] );
+      spidrctrl->getDeviceType( i, &types[i] );
+    }
     }
 }
 
 // ----------------------------------------------------------------------------
 
 void SpidrDaq::init( int             *ipaddr,
-		     int             *ids,
-		     int             *ports,
-		     int             *types,
-		     SpidrController *spidrctrl )
+             int             *ids,
+             int             *ports,
+             int             *types,
+             SpidrController *spidrctrl )
 {
     int fwVersion;
     spidrctrl->getFirmwVersion(&fwVersion);
@@ -211,7 +211,7 @@ std::string SpidrDaq::errorString()
   for( unsigned int i=0; i<_frameReceivers.size(); ++i )
     {
       if( !str.empty() && !_frameReceivers[i]->errString().empty() )
-	str += std::string( ", " );
+    str += std::string( ", " );
       str += _frameReceivers[i]->errString();
     }
   if( !str.empty() && !_frameBuilder->errString().empty() )
