@@ -18,7 +18,7 @@ typedef uint16_t u16;
 typedef uint8_t  u8;
 #include "spidrdata.h"
 
-#define NR_OF_FRAMEBUFS  16 // Use a power of 2
+#define NR_OF_FRAMEBUFS  64 // Use a power of 2
 #define FRAMEBUF_SIZE    MPX3_MAX_FRAME_SIZE
 #define RECV_BUF_SIZE    16384
 
@@ -120,7 +120,7 @@ class ReceiverThread : public QThread
 
   // Frame buffers administration
   QMutex  _mutex;
-  int     _head, _tail;
+  std::atomic_int     _head, _tail;
   bool    _empty;
   u8     *_currFrameBuffer;
   int     _recvTimeoutCount;

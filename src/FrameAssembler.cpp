@@ -1,5 +1,5 @@
 #include "FrameAssembler.h"
-#include "receiveUDPThread.h"
+#include "UdpReceiver.h"
 #include <iomanip> // For pretty column printing --> std::setw()
 
 //#define SKIPMOSTPIXELS
@@ -26,18 +26,26 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
     if (packetLoss) {
       // bugger, we lost something, find first special packet
       uint16_t i = 0;
+      int missing = MPX_PIXEL_COLUMNS - cursor;
+      int last_row = row_counter,
+              next_row = 0;
+      uint16_t next_cursor = 0;
       switch (packetType(pixel_packet[i])) {
         case PIXEL_DATA_SOR :
           // OK, that can happen on position 0, store the row, claim we finished the previous
-          row_counter = extractRow(pixel_packet[endCursor/pixels_per_word]) - 1;
-          assert (row_counter >= 0 && row_counter < 256);
+          next_row = extractRow(lutBugFix(pixel_packet[endCursor/pixels_per_word])) - 1;
+          missing = (next_row - last_row) * MPX_PIXEL_COLUMNS;
+          assert (next_row >= 0 && next_row < MPX_PIXEL_ROWS);
           break;
         case PIXEL_DATA_SOF :
         case INFO_HEADER_SOF:
         case INFO_HEADER_MID:
         case INFO_HEADER_EOF:
           // somehow we found a new frame, store the current row/frame
-          fsm->putChipFrame(frameId, chipIndex, frame);
+          if (frame != nullptr) {
+              frame->pixelsLost += missing + (MPX_PIXEL_ROWS - last_row) * MPX_PIXEL_COLUMNS;
+              fsm->putChipFrame(chipIndex, frame);
+          }
           frame = nullptr;
           break;
         case PIXEL_DATA_MID:
@@ -46,13 +54,21 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
         case PIXEL_DATA_EOR :
         case PIXEL_DATA_EOF :
           assert (i < packetSize);
-          int nextRow = extractRow(pixel_packet[i]);
-          assert (nextRow >= 0 && nextRow < 256);
-          if (frame == nullptr || nextRow < row_counter) {
+          next_row = extractRow(lutBugFix(pixel_packet[i]));
+          assert (next_row > 0 && next_row < MPX_PIXEL_ROWS);
+          next_cursor = endCursor - i * pixels_per_word;
+      }
+
+      if (next_row > 0) {
+          if (frame == nullptr || next_row < row_counter) {
             // we lost the rest of the frame; finish the current and start a new one
-            if (frame != nullptr)
-                fsm->putChipFrame(frameId, chipIndex, frame);
-            frame = fsm->newChipFrame();
+            if (frame != nullptr) {
+                frame->pixelsLost += missing + (MPX_PIXEL_ROWS - last_row) * MPX_PIXEL_COLUMNS;
+                fsm->putChipFrame(chipIndex, frame);
+            }
+            frame = fsm->newChipFrame(chipIndex);
+            missing = 0;
+            last_row = -1;
             if (counter_depth == 24) {
                 if (omr.getMode() == 1) {
                     // finished high, next frame
@@ -69,12 +85,17 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
           } else {
             // we lost part of this frame; store the row, start a new one
           }
-          cursor = endCursor - i * pixels_per_word;
-          assert (cursor >= 0 && cursor < 256);
+          cursor = next_cursor;
+          assert (cursor >= 0 && cursor < MPX_PIXEL_COLUMNS);
           assert (packetEndsRow(pixel_packet[(endCursor - cursor) / pixels_per_word]));
-          row_counter = nextRow;
-          row = frame->getRow(row_counter);
-          break;
+          row_counter = next_row;
+          frame->pixelsLost += missing + (row_counter - 1 - last_row) * MPX_PIXEL_COLUMNS + cursor;
+          if (cursor == 0) {
+            assert (packetType(pixel_packet[0]) == PIXEL_DATA_SOR);
+            row_counter--;	// the normal processing will start with incrementing and getting the row
+          } else {
+            row = frame->getRow(row_counter);
+          }
       }
     }
 
@@ -86,21 +107,15 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
 
     switch (type) {
     case PIXEL_DATA_SOF:
-      ++pSOF;
       row_counter = -1;
-      --pSOR;
       [[fallthrough]];
     case PIXEL_DATA_SOR:
-      ++pSOR;
       ++row_counter;
-      ++rownr_SOR;
-      assert (row_counter >= 0 && row_counter < 256);
+      assert (row_counter >= 0 && row_counter < MPX_PIXEL_ROWS);
       row = frame->getRow(row_counter);
       cursor = 0;
-      --pMID;
       [[fallthrough]];
     case PIXEL_DATA_MID:
-      ++pMID;
 #ifdef SKIPMOSTPIXELS
       cursor += pixels_per_word;
 #else
@@ -109,35 +124,29 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
         pixelword >>= counter_bits;
       }
 #endif
-      assert (cursor < 256);
+      assert (cursor < MPX_PIXEL_COLUMNS);
       break;
     case PIXEL_DATA_EOF:
-      ++pEOF;
-      frameId = extractFrameId(pixelword);
       row_counter = -1;
-      cursor = 55555;
-      --pEOR;
       [[fallthrough]];
     case PIXEL_DATA_EOR:
-      ++pEOR;
-      for (; cursor < 256; cursor++) {
+      pixelword = lutBugFix(pixelword);
+      if (type == PIXEL_DATA_EOF) {
+          frameId = extractFrameId(pixelword);
+      }
+      for (; cursor < MPX_PIXEL_COLUMNS; cursor++) {
         row[cursor] = uint16_t(pixelword & pixel_mask);
         pixelword >>= counter_bits;
       }
       if (type == PIXEL_DATA_EOF) {
           // we're done with this one!
-          fsm->putChipFrame(frameId, chipIndex, frame);
+          fsm->putChipFrame(chipIndex, frame);
           frame = nullptr;
       }
-      ++rownr_EOR;
       break;
     case INFO_HEADER_SOF:
-      //! This is really iSOF (N*1) + iMID (N*6) + iEOF (N*1) = 8*N
-      ++iSOF;
       infoIndex = 0; break;
     case INFO_HEADER_MID:
-      //! This is really iMID (N*6) + iEOF (N*1) = 7*N
-      ++iMID;
       if (infoIndex == 4)
         chipId = int((pixelword & 0xffffffff));
       else if (infoIndex == 5 && chipId != 0) {
@@ -145,7 +154,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
       }
       infoIndex++; break;
     case INFO_HEADER_EOF:
-      ++iEOF;
+      if (chipId < 5) break;
       omr.setLowR(pixelword & 0xffffffff);
       switch (omr.getCountL()) {
         case 0: counter_depth = 1; break;
@@ -158,7 +167,7 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
       pixel_mask = (1 << counter_bits) - 1;
       endCursor = MPX_PIXEL_COLUMNS - (MPX_PIXEL_COLUMNS % pixels_per_word);
       assert (frame == nullptr);
-      frame = fsm->newChipFrame();
+      frame = fsm->newChipFrame(chipIndex);
       frame->omr = omr;
       break;
     default:
@@ -169,8 +178,78 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
                   << "\n";
         ++rubbish_counter;
       }
-      ++def;
       break;
     }
   }
 }
+
+uint64_t FrameAssembler::lutBugFix(uint64_t pixelword) {
+  if (_lutBug) {
+      // the pixel word is mangled, un-mangle it
+      if (counter_bits == 12) {
+          long mask0 = 0x0000000000000fffL,
+               mask4 = 0x0fff000000000000L;
+          long p0 = _mpx3Rx12BitsLut[pixelword & mask0],
+               p4 = ((long) (_mpx3Rx12BitsEnc[(pixelword & mask4) >> 48])) << 48;
+          pixelword = (pixelword & (~(mask0 | mask4))) | p0 | p4;
+      } else if (counter_bits == 6) {
+          // decode pixel 0 .. 3
+          long mask0 = 0x000000000000003fL, maskShifted = mask0;
+          long wordShifted = pixelword;
+          for (int i = 0; i < 4; i++) {
+              long pixel = _mpx3Rx6BitsLut[wordShifted & mask0];
+              pixelword = (pixelword & (~maskShifted)) | (pixel << (6 * i));
+              wordShifted >>= 6;
+              maskShifted <<= 6;
+          }
+          // leave pixel 4 .. 5
+          wordShifted >>= 12;
+          maskShifted <<= 12;
+          // encode pixel 6 .. 9
+          for (int i = 6; i < 10; i++) {
+              long pixel = _mpx3Rx6BitsEnc[wordShifted & mask0];
+              pixelword = (pixelword & (~maskShifted)) | (pixel << (6 * i));
+              wordShifted >>= 6;
+              maskShifted <<= 6;
+          }
+      }
+  }
+  return pixelword;
+}
+void FrameAssembler::lutInit(bool lutBug) {
+
+    _lutBug = lutBug;
+    if (lutBug) {
+      // Generate the 6-bit look-up table (LUT) for Medipix3RX decoding
+      int pixcode = 0;
+      for(int i=0; i<64; i++ )
+        {
+          _mpx3Rx6BitsLut[pixcode] = i;
+          _mpx3Rx6BitsEnc[i] = pixcode;
+          // Next code = (!b0 & !b1 & !b2 & !b3 & !b4) ^ b4 ^ b5
+          int bit = (pixcode & 0x01) ^ ((pixcode & 0x20)>>5);
+          if( (pixcode & 0x1F) == 0 ) bit ^= 1;
+          pixcode = ((pixcode << 1) | bit) & 0x3F;
+        }
+
+      // Generate the 12-bit look-up table (LUT) for Medipix3RX decoding
+      pixcode = 0;
+      for(int i=0; i<4096; i++ )
+        {
+          _mpx3Rx12BitsLut[pixcode] = i;
+          _mpx3Rx12BitsEnc[i] = pixcode;
+          // Next code = (!b0 & !b1 & !b2 & !b3 & !b4& !b5& !b6 & !b7 &
+          //              !b8 & !b9 & !b10) ^ b0 ^ b3 ^ b5 ^ b11
+          int bit = ((pixcode & 0x001) ^ ((pixcode & 0x008)>>3) ^
+                 ((pixcode & 0x020)>>5) ^ ((pixcode & 0x800)>>11));
+          if( (pixcode & 0x7FF) == 0 ) bit ^= 1;
+          pixcode = ((pixcode << 1) | bit) & 0xFFF;
+        }
+    }
+}
+
+int   FrameAssembler::_mpx3Rx6BitsLut[64];
+int   FrameAssembler::_mpx3Rx6BitsEnc[64];
+int   FrameAssembler::_mpx3Rx12BitsLut[4096];
+int   FrameAssembler::_mpx3Rx12BitsEnc[4096];
+bool  FrameAssembler::_lutBug;

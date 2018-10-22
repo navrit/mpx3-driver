@@ -1,28 +1,42 @@
 #ifndef FRAMESETMANAGER_H
 #define FRAMESETMANAGER_H
 
+#include <stdint.h>
+#include <atomic>
 #include <mutex>
+#include <condition_variable>
 #include "FrameSet.h"
 
+#define FSM_SIZE 1024
+#define FSM_MASK (FSM_SIZE-1)
 class FrameSetManager
 {
 public:
     FrameSetManager();
 
-    void clearFrame(uint8_t frameId);
-    void putChipFrame(uint8_t frameId, int chipIndex, ChipFrame* cf);
-    ChipFrame *newChipFrame();
+    void putChipFrame(int chipIndex, ChipFrame* cf);
+    ChipFrame *newChipFrame(int chipIndex);
     bool isFull();
     bool isEmpty();
+    bool wait(unsigned long timeout_ms);
     FrameSet *getFrameSet();
-    void releaseFrameSet();
+    void releaseFrameSet(FrameSet *);
+
+    // Statistics
+    int     _framesReceived = 0;
+    int     _framesLost = 0;
 
 private:
-    FrameSet fs[256];
+    FrameSet fs[FSM_SIZE];
     int dropped = 0;
-    uint8_t head_ = 0, tail_ = 0, ahead_ = 0;
-    uint16_t with_client = 50000;
-    std::mutex mutex_;
+    uint8_t frameId;
+    bool expectCounterH = false;
+    // for diagnostics: 0=unused, 1=draft, 2=published, 3=reading
+    int headState = 0, tailState = 0;
+    std::atomic_uint head_{0};
+    std::atomic_uint tail_{0};
+    std::condition_variable _frameAvailableCondition;
+    std::mutex headMut, tailMut;
 };
 
 #endif // FRAMESETMANAGER_H

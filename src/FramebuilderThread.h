@@ -19,6 +19,8 @@ typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t  u8;
 #include "spidrdata.h"
+#include "FrameSet.h"
+#include "FrameSetManager.h"
 
 #define NR_OF_DEVICES  4
 
@@ -40,18 +42,14 @@ class FramebuilderThread : public QThread
   void   inputNotification();
   void   abortFrame();
   virtual void processFrame();
-  void   writeFrameToFile();
-  void   writeRawFrameToFile();
-  void   writeDecodedFrameToFile();
   bool   hasFrame( unsigned long timeout_ms = 0 );
-  int   *frameData( int index, int *size, int *lost_count = 0 );
+  FrameSet   *frameData();
   void   clearFrameData( int index );
-  void   releaseFrame();
+  void   releaseFrame(FrameSet*fs);
   i64    frameTimestamp();
   double frameTimestampDouble();
   i64    frameTimestampSpidr();
   int    frameShutterCounter( int index = -1 );
-  bool   isCounterhFrame( int index = -1 );
 
   void   setAddrInfo( int *ipaddr, int *ports );
   void   setDeviceIdsAndTypes( int *ids, int *types );
@@ -77,6 +75,7 @@ class FramebuilderThread : public QThread
   std::string errString();
   void clearErrString() { _errString.clear(); };
 
+  FrameSetManager *pFrameSetManager;
  protected:
   // Vector with pointers to frame receivers (up to 4 of them)
   std::vector<ReceiverThread *> _receivers;
@@ -85,7 +84,6 @@ class FramebuilderThread : public QThread
   QMutex         _mutex;
   QWaitCondition _inputCondition;
   QWaitCondition _outputCondition;
-  QWaitCondition _frameAvailableCondition;
   bool           _stop;
 
   // For external notification purposes, a general-purpose callback function
@@ -102,7 +100,6 @@ class FramebuilderThread : public QThread
   int   _framesWritten;
   int   _framesProcessed;
   int   _lostCountTotal;
-  int   _lostCountFrame[NR_OF_DEVICES];
   bool  _decode;
   bool  _compress;
   bool  _flush;
@@ -125,23 +122,13 @@ class FramebuilderThread : public QThread
   // Info about the (decoded) set of frames
   i64           _timeStamp;
   i64           _timeStampSpidr;
-  int           _frameSz[NR_OF_DEVICES];
   int           _frameId[NR_OF_DEVICES];
-  bool          _isCounterhFrame[NR_OF_DEVICES];
   SpidrHeader_t _spidrHeader[NR_OF_DEVICES];
 
-  // Intermediate buffers for a (decoded) set of frames;
-  // one from each of up to 4 receivers
-  int           _decodedFrames[2][NR_OF_DEVICES][256*256];
-  std::atomic_int _under_construction{0};
-  std::atomic_int _with_client{-1};
 
   virtual int mpx3RawToPixel( unsigned char *raw_bytes,
                               int            nbytes,
-                              int           *pixels,
-                              int            counter_depth,
-                              //int          device_type,
-                              bool           is_counterh ); //compress );
+                              int			chipIndex);
 };
 
 #endif // FILEWRITERTHREAD_H

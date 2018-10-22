@@ -1,54 +1,101 @@
 #include "FrameSetManager.h"
 
+#include <assert.h>
+#include <iostream>
+#include <chrono>
+
 FrameSetManager::FrameSetManager()
 {
 
 }
 
 bool FrameSetManager::isFull() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return head_ + 1 == tail_;
+    return head_ - tail_ == FSM_SIZE-1;
 }
 
 bool FrameSetManager::isEmpty() {
-    std::lock_guard<std::mutex> lock(mutex_);
     return head_ == tail_;
 }
 
+bool FrameSetManager::wait(unsigned long timeout_ms) {
+    std::unique_lock<std::mutex> lock(tailMut);
+    auto duration = std::chrono::milliseconds(timeout_ms);
+
+    if (isEmpty())
+        return _frameAvailableCondition.wait_for( lock, duration ) == std::cv_status::no_timeout;
+    else
+        return true;
+}
+
 FrameSet * FrameSetManager::getFrameSet() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    while (tail_ != head_ && fs[tail_].isEmpty()) tail_++;
     if (head_ == tail_) return nullptr;
-    with_client = tail_;
-    return fs + tail_;
+    std::lock_guard<std::mutex> lock(tailMut);
+    tailState = 3;
+    return &fs[tail_ & FSM_MASK];
 }
 
-void FrameSetManager::releaseFrameSet() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (tail_ == with_client)
-        clearFrame(tail_++);
-    with_client = 50000;
-}
-
-void FrameSetManager::clearFrame(uint8_t frameId) {
-    fs[frameId].clear();
-    // later: put the ChipFrame back in the pool
-}
-
-void FrameSetManager::putChipFrame(uint8_t frameId, int chipIndex, ChipFrame* cf) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (head_ == frameId) {
-        // that's normally the case
-    } else if (head_ == tail_) {
-        // new frame in an empty buffer, except there could be some under construction
-        while (tail_ != frameId && fs[tail_].isEmpty()) { head_ = ++tail_; }
-        while (head_ != frameId && ! fs[head_].isComplete()) head_++;
+void FrameSetManager::releaseFrameSet(FrameSet *fsUsed) {
+    std::lock_guard<std::mutex> lock(tailMut);
+    if (fsUsed == &fs[tail_ & FSM_MASK]) {
+        assert (tailState == 3);
+        fsUsed->clear();
+        tail_++;
+        tailState = 0;
+    } else if (fsUsed == nullptr) {
+        if (tail_ != head_) {
+            fs[tail_ & FSM_MASK].clear();
+            tail_++;
+        }
+        tailState = 0;
+    } else {
+        std::cerr << " spurious release of FrameSet" << std::endl;
+        tailState = 0;
     }
-    fs[frameId].putChipFrame(chipIndex, cf);
-    if (fs[frameId].isComplete()) head_ = frameId + 1;
+}
+
+void FrameSetManager::putChipFrame(int chipIndex, ChipFrame* cf) {
+    std::lock_guard<std::mutex> lock(headMut);
+    if (headState == 0) {
+        frameId = cf->frameId;
+        headState = 1;
+    }
+    assert (headState == 1);
+    FrameSet *dest = &fs[head_ & FSM_MASK];
+    if (frameId != cf->frameId) {
+        // starting a new frame, after publishing this
+        if (isFull()) {
+            _framesLost++;
+            dest->clear();
+        } else {
+            head_++;
+            _framesReceived++;
+            dest = &fs[head_ & FSM_MASK];
+            _frameAvailableCondition.notify_one();
+        }
+    }
+    dest->putChipFrame(chipIndex, cf);
+    OMR omr = cf->omr;
+    if (omr.getCountL() == 3 && omr.getMode() == 0)
+        expectCounterH = true;
+    else if (dest->isComplete()) {
+        if (isFull()) {
+            _framesLost++;
+            dest->clear();
+        } else {
+            head_++;
+            _framesReceived++;
+            _frameAvailableCondition.notify_one();
+        }
+        expectCounterH = false;
+        headState = 0;
+    }
 }
 
 
-ChipFrame *FrameSetManager::newChipFrame() {
-    return new ChipFrame();
+ChipFrame *FrameSetManager::newChipFrame(int chipIndex) {
+    std::lock_guard<std::mutex> lock(headMut);
+    FrameSet *dest = &fs[head_ & FSM_MASK];
+    ChipFrame *frame = dest->takeChipFrame(chipIndex, expectCounterH);
+    return frame == nullptr ? new ChipFrame() : frame;
+    //return  new ChipFrame();
 }

@@ -214,7 +214,6 @@ void ReceiverThread::readDatagrams()
       // Process the received packet
       ++_packetsReceived;
       sequence_nr = byteswap( _spidrHeader->sequenceNr ) - 1; // NB: minus 1..
-      shutter_cnt = byteswap( _spidrHeader->shutterCnt );
 
       // Initialize shutter counter if necessary and determine
       // the expected number of packets per frame

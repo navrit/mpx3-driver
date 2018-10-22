@@ -33,7 +33,6 @@ class ReceiverThreadC : public ReceiverThread
   virtual void readDatagrams();
   void         nextFrame();
   virtual int  dataSizeFrame()          { return _frameSize[_tail]; }
-  virtual int  frameFlags()             { return _frameFlags[_tail]; }
 
   virtual int  pixelsReceived()         { return _pixelsReceived; }
   virtual int  pixelsLost()             { return _pixelsLost; }
@@ -50,7 +49,6 @@ class ReceiverThreadC : public ReceiverThread
   int     _rowCnt, _rowPixels;
   u64    *_framePtr;
   int     _frameSize[NR_OF_FRAMEBUFS];
-  int     _frameFlags[NR_OF_FRAMEBUFS];
   u16     _shutterCnt;
   bool    _bigEndian;
   char    _infoHeader[256/8]; // Storage for a single info header
