@@ -10,9 +10,11 @@ class ChipFrame
 {
 public:
     ChipFrame();
+    uint8_t frameId;
+    int pixelsLost;
     OMR omr;
     int brokenRows;
-    void clear() { memset(data, 0, sizeof(data));}
+    void clear() { memset(data, 0, sizeof(data)); pixelsLost = 0; brokenRows = 0;}
     //bool isEmpty();
     uint16_t * getRow(int rowNum) { return data + MPX_PIXEL_COLUMNS * rowNum; }
     void finish();
