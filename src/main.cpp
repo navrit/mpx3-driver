@@ -187,7 +187,13 @@ void stopTrigger(SpidrController *spidrcontrol, bool readoutMode_sequential) {
  * @brief main, initialise the testDriver class and run
  * @return 0
  */
-int main() {
+int main(int argc, char * argv[]) {
+  //std::string filename = argv[1];
+  std::string mode = "";
+  if (argc > 1) {
+      mode = argv[1];
+  }
+
   std::shared_ptr<spdlog::logger> console;
   SpidrController *spidrcontrol = nullptr;
   NetworkSettings networkSettings;
@@ -204,6 +210,14 @@ int main() {
       return -2;
   }
 
+  if (mode == "") {
+      spdlog::get("console")->info("No arguments, default operation");
+  } else if (mode == "stop") {
+      spdlog::get("console")->info("Stopping trigger and exiting");
+      stopTrigger(spidrcontrol, config.readoutMode_sequential);
+      return 0;
+  }
+
   /* Exit now if you are not connected to the SPIDR*/
   if (!checkConnectedToDetector(spidrcontrol)) {
       spdlog::get("console")->error("Not connected to SPIDR");
@@ -217,9 +231,11 @@ int main() {
   int fwVersion;
   spidrcontrol->getFirmwVersion(&fwVersion);
   UdpReceiver *udpReceiver = new UdpReceiver(fwVersion < 0x18100100);
+
   FrameSetManager *frameSetManager = nullptr;
   std::thread th;
   updateTimeout_us(config);
+
   udpReceiver->setPollTimeout(config.timeout_us); /* [microseconds] */
 
   if (udpReceiver->initThread("", networkSettings.portno)) {
@@ -227,11 +243,10 @@ int main() {
       frameSetManager = udpReceiver->getFrameSetManager();
       startTrigger(spidrcontrol, config);
       th.join();
-      stopTrigger(spidrcontrol, config.readoutMode_sequential);
-      delete spidrcontrol;
-      spdlog::get("console")->info("[END]");
-      return 0;
-  } else {
-      return -1;
   }
+  stopTrigger(spidrcontrol, config.readoutMode_sequential);
+  delete spidrcontrol;
+  spdlog::get("console")->info("[END]");
+
+  return 0;
 }
