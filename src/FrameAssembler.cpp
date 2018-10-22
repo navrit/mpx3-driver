@@ -111,6 +111,9 @@ void FrameAssembler::onEvent(PacketContainer &pc) {
       [[fallthrough]];
     case PIXEL_DATA_SOR:
       ++row_counter;
+        if (!(row_counter >= 0 && row_counter < MPX_PIXEL_ROWS)) {
+            spdlog::get("console")->debug(std::string("Row_counter = ").append(std::to_string(row_counter)));
+        }
       assert (row_counter >= 0 && row_counter < MPX_PIXEL_ROWS);
       row = frame->getRow(row_counter);
       cursor = 0;
