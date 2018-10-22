@@ -132,7 +132,7 @@ bool initDetector(SpidrController *spidrcontrol, Config config) {
   spdlog::get("console")->info("\ttrig_mode = {}", config.trig_mode);
   spdlog::get("console")->info("\ttrig_length_us = {}", config.trig_length_us);
   spdlog::get("console")->info("\ttrig_freq_mHz = {}", config.trig_freq_mhz);
-  spdlog::get("console")->info("\tnr_of_triggers ={}", config.nr_of_triggers);
+  spdlog::get("console")->info("\tnr_of_triggers = {}", config.nr_of_triggers);
 
   return true;
 }
