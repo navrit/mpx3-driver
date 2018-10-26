@@ -1,4 +1,4 @@
-# My new super cool amazing Medipix3 SPIDR driver
+# New super cool amazing Medipix3 SPIDR driver
 
 ## Data flow diagram
 ![Last updated: 15/10/2018](./doc/20181015-mpx3-driver-diagram.svg)
