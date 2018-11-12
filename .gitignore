@@ -1,4 +1,5 @@
 /build/*
+/build-*
 /build-debug/*
 *.stash
 *.o
@@ -7,3 +8,4 @@
 Makefile
 receiveUDPThread
 /doc/doxygen_output/*
+
